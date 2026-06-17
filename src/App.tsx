@@ -1,4 +1,4 @@
-import { Brain, Github } from "lucide-react";
+import { Github } from "lucide-react";
 import { SentinelMemory } from "./SentinelMemory";
 import { DeploymentInfo } from "./DeploymentInfo";
 
@@ -10,7 +10,7 @@ function App() {
       <header className="sticky top-0 z-50 bg-[var(--color-nav)] text-white">
         <div className="container mx-auto flex h-14 items-center justify-between px-4">
           <h1 className="flex items-center gap-2 text-lg font-semibold">
-            <Brain className="h-5 w-5" />
+            <img src="/logo.png" alt="SentinelMem logo" className="h-7 w-7" />
             SentinelMem
             <span className="hidden text-xs font-normal text-white/50 sm:inline">
               · verifiable agent memory on Walrus
