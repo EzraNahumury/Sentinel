@@ -19,13 +19,12 @@ railway up                   # builds the Dockerfile and deploys
 railway domain               # generate a public https domain
 ```
 
-The marketplace already defaults to this hosted notary (`DEFAULT_NOTARY_URL` in
-`scripts/tlsn/harness.ts`), so the scanner and verifier agree without extra
-config:
+SentinelMem already defaults to this hosted notary (`DEFAULT_NOTARY_URL` in
+`scripts/tlsn/harness.ts`), so the agent proves capture and re-verifies on recall
+against the same notary without extra config:
 
 ```bash
-TLSN_ENABLED=1 SUI_SECRET_KEY=…      pnpm scan
-TLSN_ENABLED=1 VERIFIER_SECRET_KEY=… pnpm verify
+pnpm sentinel "https://example.com/"   # capture + TLSNotary proof; recall re-verifies it
 ```
 
 To point at a different notary, set `TLSN_NOTARY_URL` for both.
