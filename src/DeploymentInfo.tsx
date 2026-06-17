@@ -1,14 +1,10 @@
 import { useState } from "react";
 import { Info, ExternalLink, Copy, Check, X } from "lucide-react";
-import { TESTNET_SCAN_MARKET_PACKAGE_ID, TESTNET_MARKET_ID } from "./constants";
+import { NETWORK, SENTINEL_DEPLOYMENTS } from "./constants";
 
-const NETWORK = "testnet";
 const EXPLORER = `https://suiscan.com/${NETWORK}`;
 
-const ENTRIES: ReadonlyArray<{ label: string; id?: string }> = [
-  { label: "Package", id: TESTNET_SCAN_MARKET_PACKAGE_ID },
-  { label: "Market", id: TESTNET_MARKET_ID },
-];
+const ENTRIES = SENTINEL_DEPLOYMENTS;
 
 function short(id: string): string {
   return `${id.slice(0, 6)}…${id.slice(-4)}`;

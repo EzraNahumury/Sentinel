@@ -1,9 +1,8 @@
-import { ConnectButton } from "@mysten/dapp-kit-react/ui";
-import { ScanExperience } from "./ScanExperience";
-import { JobBoard } from "./JobBoard";
+import { Brain, Github } from "lucide-react";
 import { SentinelMemory } from "./SentinelMemory";
 import { DeploymentInfo } from "./DeploymentInfo";
-import { Brain, Lock } from "lucide-react";
+
+const REPO_URL = "https://github.com/EzraNahumury/Sentinel";
 
 function App() {
   return (
@@ -17,50 +16,23 @@ function App() {
               · verifiable agent memory on Walrus
             </span>
           </h1>
-          <div className="flex items-center gap-3">
-            <a
-              href="https://faucet.sui.io/?network=testnet"
-              target="_blank"
-              rel="noreferrer"
-              className="text-sm text-white/70 hover:text-white hover:underline"
-            >
-              Testnet faucet
-            </a>
-            <ConnectButton />
-          </div>
+          <a
+            href={REPO_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 text-sm text-white/70 transition hover:text-white"
+          >
+            <Github className="h-4 w-4" />
+            <span className="hidden sm:inline">GitHub</span>
+          </a>
         </div>
       </header>
 
-      {/* SentinelMem inspector leads the page — the Walrus-track story. */}
       <main className="container mx-auto px-4 py-8">
         <div className="mx-auto max-w-3xl">
           <SentinelMemory />
         </div>
       </main>
-
-      {/* The underlying decentralized scan marketplace (evidence acquisition). */}
-      <section className="border-t">
-        <ScanExperience />
-        <div className="container mx-auto px-4 py-8">
-          <div className="mx-auto max-w-3xl space-y-4">
-            <div className="rounded-lg border border-violet-400/30 bg-violet-500/10 px-4 py-3 text-xs text-violet-200">
-              <div className="flex items-center gap-1.5 font-medium">
-                <Lock className="h-4 w-4" /> TLSNotary validation layer
-              </div>
-              <p className="mt-1">
-                Scanner nodes attach a{" "}
-                <span className="font-medium">TLSNotary proof</span> that the
-                target host actually served the HTML over TLS — the server
-                can&apos;t be impersonated and the scanner can&apos;t fabricate
-                evidence. The verifier independently re-checks each proof (notary
-                signature → proven host → HTTP status → HTML hash) and{" "}
-                <span className="font-medium">payout is gated on it</span>.
-              </p>
-            </div>
-            <JobBoard />
-          </div>
-        </div>
-      </section>
 
       <DeploymentInfo />
     </div>
