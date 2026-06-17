@@ -1,259 +1,244 @@
-# Proof of Scan — scan-market (Sui + Walrus POC)
+# SentinelMem — verifiable agent memory on Walrus
 
-A decentralized URL scan marketplace on Sui. A requester escrows a SUI reward
-against a target URL and a desired vantage (geo / device / browser) and asks for
-N independent, **verified** scans. **Terminal scanner nodes** listen for open
-jobs, render the page in a headless browser, upload the screenshot + HTML to
-**Walrus**, and submit the resulting blob ids on-chain. Each submission lands as
-**PENDING and is paid nothing** until an independent verifier approves it — so
-fake evidence never earns from the escrow. The requester sees every incoming
-screenshot rendered from Walrus on their page.
+> An autonomous AI security‑analyst agent whose long‑term memory lives on
+> **Walrus**, where every record is **Ed25519‑signed** (tamper‑rejected on
+> recall) and backed by a **TLSNotary** provenance proof — re‑verifiable in your
+> browser. A recalled fact isn't *"the LLM says it saw X"*, it's *"here is a
+> re‑checkable proof that host X really served X, in a record no one can forge."*
 
-Flows, end to end:
+**Sui Hackathon Overflow · Walrus track** — *Walrus as a Verifiable Data Platform for AI.*
 
-1. **Post a job** — requester escrows SUI for `scans` verified slots (web or
-   CLI).
-2. **Scan** — each scanner node captures the page (device profile → varied
-   screenshots), uploads to Walrus, and calls `submit_scan` with the blob ids.
-   The scan is recorded **PENDING**; no payout yet.
-3. **Verify (per scan) → pay** — the verifier re-fetches each submission from
-   Walrus, enforces policy + URL/HTML integrity, and calls `resolve_scan`:
-   approved scans release their portion to the worker, rejected scans keep their
-   funds in escrow (reclaimable / re-scannable). Payout is gated on
-   verification.
-4. **Render + reclaim** — the requester's page renders the Walrus screenshots
-   and per-scan verdicts; once the job settles they can reclaim leftover escrow.
+---
 
-Verification is **per scan, not per job**: a single fake submission is rejected
-and unpaid without blocking the legitimate scans in the same job.
+## The problem
 
-## Stack
+AI agents are stateless and fragmented. The usual fix — "give the agent a memory
+store" — just relocates the trust problem: naive agent memory is **self‑asserted
+text** an agent (or anyone who can edit the store) can fabricate or silently
+corrupt. If agents are going to *act on* their own and each other's memory, that
+memory needs **integrity and provenance**, not just persistence.
 
-- **Sui Move** (`move/scan_market`) — escrow, job registry, per-submission
-  payout.
-- **@mysten/dapp-kit-react** + generated TS bindings (`pnpm codegen`).
-- **React + Vite + Tailwind** frontend (requester view).
-- **Playwright** headless capture in the scanner node
-  (`scripts/scanner-node.ts`).
-- **Walrus** testnet publisher/aggregator for evidence + proof storage
-  (`src/lib/walrus.ts`).
-- **TLSNotary** provenance — self-hosted notary (Docker) + in-process `tlsn-js`
-  prover/verifier (`scripts/tlsn/`, `src/lib/tlsnotary.ts`); the verifier
-  (`pnpm verify`) gates payout on the proof. See
-  [TLSNotary provenance](#tlsnotary-provenance-prove-the-html-was-really-served).
+## What SentinelMem does
 
-## Deployed (Sui testnet)
+A long‑running URL‑investigation agent. For each target it:
 
-- Package: `0x3b93a7619e0e669afc51ab8a32f52183209c233ceae6b5ce9a5694cf595c9b4a`
-- Market (shared object):
-  `0xdc011f87b4c99a680bc2274a95284cee1b7759d4101f96af1f2f51af03b21f9c`
-- Verifier (oracle) address = the publisher of the package; only this address
-  can call `resolve_scan`. In production this stands in for the CRE DON report.
-
-## TLSNotary provenance (prove the HTML was really served)
-
-The integrity heuristic ("does the HTML mention the host?") is forgeable. With
-**TLSNotary**, a scanner produces a cryptographic proof that the target host
-actually served the HTML over TLS — without the server's cooperation. The
-verifier (or, in production, a DON quorum) re-runs a deterministic check: notary
-signature valid → proven `server_name` == job host → HTTP 2xx → HTML content
-hash. Payout is gated on that proof.
-
-### Where each piece runs
-
-| Piece                        | Where it lives                                                                                                                                                                                                                                                                                                                                                                                                                                       | You start it?                          |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
-| **Notary** (`notary-server`) | The **hosted instance** `https://proof-of-scan-notary-production.up.railway.app` (Railway; see [`notary/`](notary/README.md)), **or** a **local Docker container** `tlsn-notary` on `http://127.0.0.1:7047`. Self-hosted — it _is_ the verifier, not a trusted external service. The hosted instance uses a **pinned** secp256k1 key (redeploy-safe); local Docker uses an ephemeral key. The verifier fetches the live key from `/info` either way. | Hosted: no · Local: `pnpm tlsn:notary` |
-| **Prover** (`tlsn-js` wasm)  | **Not a separate service.** `scripts/tlsn/harness.ts` spins up, _inside the scanner (and verifier) process_, an in-process static server + a WebSocket→TCP proxy + a headless Chromium page that runs the real MPC prover.                                                                                                                                                                                                                           | No — automatic                         |
-| **Provenance check**         | `src/lib/tlsnotary.ts`, run by the verifier (`pnpm verify`).                                                                                                                                                                                                                                                                                                                                                                                         | No — automatic                         |
-| **Evidence + proof storage** | **Walrus testnet** (public).                                                                                                                                                                                                                                                                                                                                                                                                                         | No                                     |
-| **Escrow + verdicts**        | **Sui testnet** (public, already deployed above).                                                                                                                                                                                                                                                                                                                                                                                                    | No                                     |
-
-So the **only long-running thing you launch for the notary layer is the Docker
-container**. Everything else (prover, proxy, headless browser) is started and
-torn down by the `pnpm scan` / `pnpm verify` processes. Proofs are TLS 1.2 only
-(tlsn alpha.12).
-
-### Quick check (no chain, ~15s)
-
-Uses the hosted notary by default — no Docker needed.
-
-```bash
-pnpm tlsn:prove "https://example.com/"              # real MPC proof → scripts/tlsn/out/…
-pnpm tlsn:verify scripts/tlsn/out/example.com.presentation.json example.com
-# → PROVEN — TLS provenance verified: example.com served HTTP 200, notary-signed
-# local notary instead? `pnpm tlsn:notary` then export TLSN_NOTARY_URL=http://127.0.0.1:7047
+```
+investigate(url):
+  1. RECALL    load the host's prior case files from Walrus and gate each one:
+               (a) verify the agent's Ed25519 signature over the record vs a
+                   PINNED key — any edited field breaks it  ⇒  REJECTED
+               (b) re-verify the TLSNotary proof bound to THIS host
+                   (notary sig → proven host → HTTP 2xx → content hash)
+               anything tampered/unprovable never reaches the agent.
+  2. PROVE     capture the page across device vantages + a real TLSNotary MPC
+               proof of provenance (PROVEN), or a flagged UNVERIFIED capture.
+  3. ANALYZE   an LLM (Ollama or Claude) classifies the target over the proven
+               evidence + the trusted recalled memory → phishing / cloaking /
+               suspicious / benign.
+  4. REMEMBER  append a new, SIGNED case file to the host's append-only Walrus
+               memory; anchor the pointer (local file, on-chain, or MemWal).
 ```
 
-### Full demo (5 terminals)
+A **web inspector** renders the per‑host memory timeline and **re‑verifies each
+record's signature in your browser** (WebCrypto Ed25519) — so anyone can confirm
+the memory wasn't tampered, without trusting our server.
 
-Run these from `scan-market-app/`. Use a **TLS 1.2-capable target**
-(`https://example.com/` works; many sites are TLS 1.3-only and can't be proven
-yet).
+## Why it fits the Walrus track
 
-```bash
-# one-time
-pnpm install
-pnpm exec playwright install chromium
-export SUI_SECRET_KEY="$(sui keytool export --key-identity $(sui client active-address) --json | node -e 'let s="";process.stdin.on("data",d=>s+=d);process.stdin.on("end",()=>process.stdout.write(JSON.parse(s).exportedPrivateKey))')"
-export VERIFIER_SECRET_KEY="$SUI_SECRET_KEY"   # publisher key = the on-chain verifier
-# notary defaults to the hosted instance; for a local one:
-#   pnpm tlsn:notary && export TLSN_NOTARY_URL=http://127.0.0.1:7047
-```
+- **Verifiable memory for AI — made literal.** Walrus is the source of truth for
+  agent memory, and every memory carries cryptographic integrity (agent
+  signature) **and** provenance (TLSNotary). Not a file dump.
+- **Long‑running, stateful agent** — recall across sessions changes behavior
+  (re‑flags a returning cloaker instantly).
+- **Artifact‑driven** — proofs, screenshots, HTML, case files, and manifests are
+  durable Walrus artifacts the agent reuses.
+- **Pluggable** — the pointer backend swaps between a local file, an on‑chain
+  anchor (Sui Move), and **MemWal (Walrus Memory)** with zero agent changes.
 
-| #   | Terminal       | Command                                                                 |
-| --- | -------------- | ----------------------------------------------------------------------- |
-| 1   | **Notary**     | hosted by default (no terminal needed) — or `pnpm tlsn:notary` locally  |
-| 2   | **Web UI**     | `pnpm dev` → http://localhost:5173                                      |
-| 3   | **Post a job** | `./scripts/post-job.sh "https://example.com/" 0.02 1 US desktop chrome` |
-| 4   | **Scanner**    | `SUI_SECRET_KEY=$SUI_SECRET_KEY pnpm scan`                              |
-| 5   | **Verifier**   | `VERIFIER_SECRET_KEY=$VERIFIER_SECRET_KEY pnpm verify`                  |
+## The differentiator
 
-Flow: the scanner renders the page, produces a TLSNotary proof, uploads the
-screenshot + HTML + **presentation** to Walrus, and submits the proof blob id
-on-chain. The verifier fetches the presentation from Walrus, re-verifies
-provenance against the notary key, and **releases payout only if the proof
-checks out** — writing the verdict into the submission's `verdict_reason` +
-`content_hash`. The web UI shows the **TLS-proven · notary-signed** badge and a
-link to the proof. TLSNotary is **on by default** — a scan with no valid proof
-is rejected and never paid (set `TLSN_ENABLED=0` to fall back to the Walrus
-re-fetch heuristic). The notary defaults to the hosted instance; set
-`TLSN_NOTARY_URL=http://127.0.0.1:7047` to use a local `pnpm tlsn:notary`.
+Almost any team can put agent memory on Walrus. SentinelMem makes that memory
+**unforgeable**: tamper *any* field of a stored record → the agent's signature
+breaks → rejected; swap in a proof from another host → it no longer attests the
+claimed host → rejected. Anyone can re‑check it — even in the browser.
 
-## Prerequisites
+---
 
-- Node 18+, `pnpm`
-- Sui CLI (`brew install sui`), configured for testnet
-- A funded testnet address. Fund via the web faucet:
-  `https://faucet.sui.io/?network=testnet` (paste your
-  `sui client active-address`).
-- Playwright Chromium (one-time): `pnpm exec playwright install chromium`
+## Live on Sui testnet (verified)
 
-## 1) Requester — post a job
+| | |
+| --- | --- |
+| Package | `0xca26b2e73757ee26fd7e32f1f656bcffa81e5bd42b0fe115ca9ba90ee3297c6e` |
+| `MemoryRegistry` (shared) | `0x4df6d15626ffde080ab1b5bf15728fc107a7007aa7adfba0eb059a57a21927b5` |
+| `Market` (shared) | `0x86db8e0cf8a5cc9f2a1fbbd163ecc0c504b97b291e69ea2867e13e496110c267` |
+| `MemoryAnchored` event | verified — agent‑driven anchor tx `GjknGzPK5S3ctGKebj8Ndw7PWhQgz1XBy8yt519RA1Dr` |
 
-Web:
+Explore on [Suiscan](https://suiscan.com/testnet/object/0xca26b2e73757ee26fd7e32f1f656bcffa81e5bd42b0fe115ca9ba90ee3297c6e).
+
+---
+
+## Quickstart
+
+### 1. Install
 
 ```bash
 pnpm install
-pnpm dev   # http://localhost:5173
+pnpm exec playwright install chromium   # headless capture (one-time)
 ```
 
-Connect a Sui **testnet** wallet (the dev build also exposes a burner wallet),
-set the URL + vantage + reward + **scans wanted**, and post the job. Incoming
-scans render on the same page as scanner nodes complete them.
-
-Or via CLI (prints the new job id on stdout):
+### 2. Pick an LLM backend (`SENTINEL_LLM`)
 
 ```bash
-# <url> <reward_sui> <scans> [geo] [device] [browser]
-./scripts/post-job.sh "https://example.com" 0.04 2 US desktop chrome
+# Option A — local/cloud Ollama (no Anthropic SDK, no key for local)
+ollama serve && ollama pull llama3.1            # local
+# …or Ollama Cloud:
+export OLLAMA_HOST=https://ollama.com
+export OLLAMA_KEY=<your-key>
+export OLLAMA_MODEL=gpt-oss:120b-cloud
+export OLLAMA_THINK=low
+
+# Option B — Claude (best quality)
+pnpm add @anthropic-ai/sdk
+export ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-## 2) Scanner node — listen, capture, earn
+`SENTINEL_LLM` auto‑selects `anthropic` if `ANTHROPIC_API_KEY` is set, else
+`ollama`. The LLM choice is **orthogonal** to the verifiable‑memory guarantees —
+the verdict is signed, not trusted as truth.
 
-Each terminal you run is a scanner node. Give it a Sui key to sign with and a
-device profile so screenshots vary:
+> **Windows (PowerShell):** use `$env:NAME = "value"` instead of `export`, or run
+> the bundled helper `.\scripts\run.ps1` (sets env from `.sentinel/ollama-key.txt`).
+
+### 3. Run the agent
 
 ```bash
-# one-time: export your CLI key (any funded testnet key works)
-export SUI_SECRET_KEY="$(sui keytool export --key-identity $(sui client active-address) --json | node -e 'let s="";process.stdin.on("data",d=>s+=d);process.stdin.on("end",()=>process.stdout.write(JSON.parse(s).exportedPrivateKey))')"
-
-# terminal A — desktop scanner
-SCANNER_PROFILE=desktop pnpm scan
-# terminal B — iphone scanner (varied screenshot)
-SCANNER_PROFILE=iphone  pnpm scan
+pnpm sentinel "https://example.com/"     # investigate → signed case file on Walrus
+pnpm sentinel "https://example.com/"     # again → recalls + re-verifies prior memory
+pnpm dev                                 # http://localhost:5173 → SentinelMem panel
 ```
 
-Each node polls the `Market`, scans every open job once, uploads to Walrus, and
-submits — filling one slot per job. Env knobs: `SCANNER_PROFILE`
-(`desktop`/`iphone`/`android`), `POLL_MS`, `SCAN_PKG`, `SCAN_MARKET`, `SUI_RPC`,
-`WALRUS_PUBLISHER`.
+> The notary defaults to a hosted instance; if it's unreachable the agent degrades
+> to `UNVERIFIED` (signing + recall + tamper‑rejection still work). For reliable
+> `PROVEN` evidence, run a local notary (`pnpm tlsn:notary` + Docker) and set
+> `TLSN_NOTARY_URL=http://127.0.0.1:7047`, or use `SENTINEL_NO_PROOF=1` to skip it.
 
-Policy-denied URLs (Instagram, Facebook, etc.) are skipped by scanner nodes.
-
-## 3) Verifier — gates payout on the TLSNotary proof
-
-Run this in a **separate terminal** while the dev server is up. It polls Sui,
-and — when given the verifier key — **resolves each pending scan on-chain**
-(approve → pay worker, reject → hold). With `TLSN_ENABLED=1` it fetches each
-submission's presentation from Walrus and releases payout **only if the
-provenance proof verifies** (notary signature → proven host → HTTP 2xx → HTML
-hash); the verdict is written into the submission's `verdict_reason` +
-`content_hash`. Without `TLSN_ENABLED` it falls back to the Walrus re-fetch
-heuristic.
+### 4. Demos
 
 ```bash
-# verifier key = the package publisher's key (the only address allowed to resolve)
-export VERIFIER_SECRET_KEY="$(sui keytool export --key-identity $(sui client active-address) --json | node -e 'let s="";process.stdin.on("data",d=>s+=d);process.stdin.on("end",()=>process.stdout.write(JSON.parse(s).exportedPrivateKey))')"
+# Tamper-rejection: forge a stored record, then recall rejects it
+pnpm sentinel:tamper example.com
+pnpm sentinel "https://example.com/"     # → "signature invalid — record tampered"
 
-TLSN_ENABLED=1 pnpm verify       # poll every 8s, verify proofs, resolve pending scans
-TLSN_ENABLED=1 pnpm verify:once  # single pass (good for testing)
+# Cloaking: a local target that serves different content per device
+pnpm cloak:serve                                          # http://localhost:8799/cloak
+SENTINEL_NO_PROOF=1 pnpm sentinel "http://localhost:8799/cloak"   # → CLOAKING (2 clusters)
 ```
 
-Without `VERIFIER_SECRET_KEY` it runs read-only (no on-chain payout). Needs the
-notary running (`pnpm tlsn:notary`).
-
-### Full demo (5 terminals)
-
-| Terminal     | Command                                                                 |
-| ------------ | ----------------------------------------------------------------------- |
-| **Notary**   | `pnpm tlsn:notary` (Docker, `:7047`)                                    |
-| Web          | `pnpm dev`                                                              |
-| Post a job   | `./scripts/post-job.sh "https://example.com/" 0.02 1 US desktop chrome` |
-| Scanner      | `TLSN_ENABLED=1 SUI_SECRET_KEY=… pnpm scan`                             |
-| **Verifier** | `TLSN_ENABLED=1 VERIFIER_SECRET_KEY=… pnpm verify`                      |
-
-Use a **TLS 1.2-capable target** (`https://example.com/`); TLS 1.3-only sites
-can't be proven yet (tlsn alpha.12).
-
-CLI fallbacks:
+### 5. Tests
 
 ```bash
-# manual submission with placeholder blobs (records PENDING, no payout)
-./scripts/submit-scan.sh <job_id> [screenshot_blob_id] [html_blob_id] [notary_proof_blob_id]
-# verifier-only: approve/reject a pending scan
-./scripts/resolve-scan.sh <job_id> <index> <approve|reject>
+pnpm test    # security core: sign/verify, tamper-rejection, untrusted-key — no network
 ```
 
-## Other CLI
+---
 
-```bash
-./scripts/list-jobs.sh            # every job: verified/pending/attempts + per-scan status
-./scripts/cancel-job.sh <job_id>  # requester refund of remaining escrow (open job)
-```
+## The verifiable‑memory guarantee
 
-## Redeploy the contract
+Each case file is signed with the agent's Ed25519 key over a **canonical message**
+of its integrity‑relevant fields; on recall the signature is verified against a
+**pinned** signer key. Two independent layers defend the headline claim:
 
-```bash
-rm -f move/scan_market/Published.toml   # allow a fresh publish
-sui client publish --gas-budget 200000000 move/scan_market
-# then update src/constants.ts + scripts/env.sh with the new package + Market ids,
-# and regenerate bindings:
-node_modules/.bin/sui-ts-codegen generate
-```
+1. **Signature (integrity + authenticity).** Tamper any field — `verdict`, `host`,
+   `contentHash`, `renderHash`, `tier`, proof id — and the signature no longer
+   matches → **rejected**. A third party can't re‑sign without the agent's key.
+2. **Host‑bound proof (provenance truth).** A `PROVEN` entry's TLSNotary proof is
+   re‑verified against the entry's **own host** (never an attacker‑supplied
+   field), with a mandatory content‑hash match — so a foreign proof can't be
+   swapped in.
 
-## Move module
+`contentHash` (the proof's TLS‑transcript hash) is kept for the proof tamper‑check;
+`renderHash` (the rendered‑DOM hash, tier‑independent) is the comparable join key
+for **cloaking** and cross‑time change detection. The browser inspector verifies
+the signature client‑side via WebCrypto Ed25519 — server‑less confirmation.
 
-`move/scan_market/sources/scan_market.move`
+---
 
-- `post_job(market, reward: Coin<SUI>, url, params, max_submissions)` — escrows
-  the reward, copies the market `verifier`, shares a `ScanJob`, registers it.
-- `submit_scan(job, screenshot_blob_id, html_blob_id, notary_proof_blob_id)` —
-  records a **PENDING** submission; pays nothing. Accepts scans while
-  `approved + pending < max`. `notary_proof_blob_id` is the Walrus blob id of
-  the TLSNotary presentation (empty string if the node submitted no proof).
-- `resolve_scan(job, index, approve, verdict_reason, content_hash)` —
-  **verifier-only**. Approve releases that scan's `per_scan` portion to the
-  worker; reject holds the funds. The CRE verdict (`verdict_reason` + HTML
-  `content_hash`) is stored on the submission. Completes the job once
-  `max_submissions` scans are approved.
-- `set_cloaking(job, clusters, detail)` — verifier-only. Records the cloaking
-  summary (distinct content clusters across the job's scans) on-chain.
-- `cancel_job(job)` — requester-only refund of remaining escrow (open job).
-- `reclaim_remainder(job)` — requester-only sweep of leftover escrow once the
-  job is completed or cancelled.
+## Architecture
 
-The verifier's output is persisted **on-chain** (per-scan `verdict_reason` +
-`content_hash`, job-level `cloaking_clusters` + `cloaking_detail`) and rendered
-in the UI from chain. Emits `JobPosted` / `ScanSubmitted` / `ScanResolved` /
-`CloakingRecorded` / `JobCompleted` events.
+| Component | File |
+| --- | --- |
+| Verifiable memory layer (isomorphic) | `src/lib/memory.ts` |
+| In‑browser Ed25519 verify (WebCrypto) | `src/lib/memory-verify.ts` |
+| Web inspector (case‑file timeline + live verify) | `src/SentinelMemory.tsx` |
+| Provenance engine (multi‑vantage capture + prove + re‑verify) | `scripts/sentinel/provenance.ts` |
+| Analyst agent (pluggable Ollama/Claude, structured output) | `scripts/sentinel/analyst.ts` |
+| Orchestrator (`investigate`) | `scripts/sentinel/agent.ts` |
+| Agent record signer (Ed25519, pinned) | `scripts/sentinel/signer.ts` |
+| Anchor backends (file / MemWal) | `scripts/sentinel/anchor-store.ts`, `memwal-store.ts` |
+| On‑chain anchor client | `scripts/sentinel/onchain.ts` |
+| Seal encryption helper (opt‑in) | `scripts/sentinel/seal.ts` |
+| CLI / tamper demo / cloak target | `scripts/sentinel/{cli,tamper}.ts`, `phishing_site/local-server.ts` |
+| Move modules (escrow + on‑chain anchor) | `move/scan_market/sources/{scan_market,sentinel_memory}.move` |
+| Tests | `scripts/sentinel/sentinel.test.ts` |
+
+Built on the original **Proof‑of‑Scan** decentralized scan marketplace
+(`ScanExperience`, `JobBoard`, the TLSNotary harness in `scripts/tlsn/`) as the
+underlying evidence‑acquisition layer.
+
+---
+
+## Environment variables
+
+| Var | Default | Purpose |
+| --- | --- | --- |
+| `SENTINEL_LLM` | `anthropic` if key set, else `ollama` | Analyst backend |
+| `SENTINEL_MODEL` | `llama3.1` / `claude-opus-4-8` | Analyst model |
+| `ANTHROPIC_API_KEY` | — | Required only for `SENTINEL_LLM=anthropic` |
+| `OLLAMA_HOST` / `OLLAMA_KEY` / `OLLAMA_MODEL` / `OLLAMA_THINK` | localhost / — / `llama3.1` / — | Ollama (local or Cloud) |
+| `SENTINEL_VANTAGES` | `desktop,iphone` | Device profiles per investigation (cloaking) |
+| `TLSN_NOTARY_URL` | hosted Railway notary | TLSNotary notary |
+| `SENTINEL_NO_PROOF` | — | Skip TLSNotary (UNVERIFIED tier; signing still active) |
+| `SENTINEL_EPOCHS` | `5` | Walrus blob lifetime (epochs) |
+| `SENTINEL_ANCHORS` / `SENTINEL_SIGNER` | `.sentinel/anchors.json` / `.sentinel/agent-key.pem` | Local pointer + signer key |
+| `SENTINEL_ANCHOR_ONCHAIN` + `SENTINEL_PKG` + `SENTINEL_MEMORY_REGISTRY` + `SUI_SECRET_KEY` | — | Enable on‑chain anchoring |
+| `MEMWAL_SERVER_URL` / `MEMWAL_ACCOUNT_ID` / `MEMWAL_DELEGATE_KEY` | — | Route the pointer through MemWal |
+
+---
+
+## Tech stack
+
+**Walrus** (memory + evidence) · **Sui Move** (on‑chain anchor) · **TLSNotary**
+(provenance, headless WASM‑MPC harness) · pluggable LLM (**Ollama** local/cloud or
+**Claude**) · **MemWal**‑ and **Seal**‑ready · **Walrus Sites**‑deployable ·
+React + Vite + Tailwind inspector with in‑browser Ed25519 verification ·
+Playwright capture.
+
+## Extras (code ready; activate with your own accounts)
+
+- **MemWal** — `MemWalAnchorStore` wraps the `@mysten-incubation/memwal` SDK; set
+  `MEMWAL_*` to route the pointer through Walrus Memory.
+- **Seal** — `scripts/sentinel/seal.ts` encrypts case files before Walrus for
+  authorized readers (needs a deployed allowlist policy + key servers).
+- **Walrus Sites** — the build sets `base: "./"` + ships `ws-resources.json`;
+  deploy the inspector with `pnpm deploy:site` (site‑builder).
+
+## Honest limitations
+
+- **TLS 1.2 only** for `PROVEN` evidence (tlsn alpha.12). Most modern sites are
+  TLS 1.3 → stored as flagged `UNVERIFIED`. Cloudflare Workers **are** provable
+  (default min TLS 1.0). Use `example.com` or the bundled cloaking target for
+  `PROVEN` demos.
+- The hosted notary is a free‑tier instance that can sleep; the agent retries to
+  wake it and degrades gracefully to `UNVERIFIED` if it's down.
+- The browser badge verifies the **agent signature**; the **TLSNotary proof** is
+  re‑checked by the node verifier (the UI links to the proof blob).
+
+## Documentation
+
+- **[SENTINELMEM.md](SENTINELMEM.md)** — deep dive, full run guide, env, on‑chain/MemWal/Seal/Walrus‑Sites activation.
+- **[PITCH.md](PITCH.md)** — problem → solution → track fit → live demo script.
+- **[DEVPOST.md](DEVPOST.md)** — submission writeup + demo video storyboard.
+
+## License
+
+Hackathon project — see repository for details.
