@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+@theme {
+  /* Dark theme matching the cinematic scan experience (#0a0820 base) with
+     ChainPatrol purple as the accent. Panels sit a step above the page so they
+     read as distinct surfaces without the harsh white-on-dark contrast. */
+  --color-background: #0a0820;
+  --color-foreground: #e9e8f2;
+  --color-card: #14112e;
+  --color-nav: #241753;
+  --color-card-foreground: #e9e8f2;
+  --color-primary: #7c5cff;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #1d1942;
+  --color-secondary-foreground: #d8d4f0;
+  --color-muted: #1b1740;
+  --color-muted-foreground: #9c97bd;
+  --color-accent: #241c4f;
+  --color-accent-foreground: #d8caff;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #2a2452;
+  --color-input: #2a2452;
+  --color-ring: #8b71d6;
+  --color-sui: oklch(0.7 0.2 220);
+
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Near-square corners — sharper than a typical template. */
+  --radius-sm: 0.125rem;
+  --radius-md: 0.1875rem;
+  --radius-lg: 0.25rem;
+  --radius-xl: 0.375rem;
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-family: var(--font-sans);
+}

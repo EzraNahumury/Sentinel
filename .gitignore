@@ -1,0 +1,14 @@
+node_modules
+dist
+move/scan_market/build
+move/scan_market/package_summaries
+public/cre-verdicts.json
+public/sentinel-memory.json
+.sentinel/
+
+# never commit secrets
+*.pem
+*.key
+.env
+.env.local
+.env.*.local

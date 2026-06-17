@@ -1,0 +1,13 @@
+{
+  "routes": {
+    "/*": "/index.html"
+  },
+  "headers": {
+    "/index.html": {
+      "Cache-Control": "no-cache"
+    }
+  },
+  "metadata": {
+    "name": "SentinelMem — verifiable agent memory"
+  }
+}
