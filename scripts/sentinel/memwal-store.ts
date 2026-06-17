@@ -1,42 +1,36 @@
-// MemWal (Walrus Memory) anchor backend — slots in behind the AnchorStore seam
-// so the host -> latest-manifest-blob-id pointer lives in MemWal. The case-file
-// and manifest BLOBS still live on Walrus; this stores the small mutable pointer
-// in MemWal's memory.
+// MemWal (Walrus Memory) anchor backend — routes the host -> manifest pointer
+// through MemWal instead of a local file. The case-file/manifest BLOBS still
+// live on Walrus; this stores the small mutable pointer as a MemWal memory.
 //
-// MemWal is an SDK (@mysten-incubation/memwal), NOT a key/value REST store:
-//   - auth is a signed-request model — `key` is your Ed25519 delegate-key hex
-//     (minted with your accountId in the Walrus Memory dashboard
-//     https://memory.walrus.xyz/), not a Bearer token.
-//   - storage is semantic: remember(text, ns) (async, LLM fact-extracted) and
-//     recall({query, namespace, ...}) (similarity search). There is no exact
-//     get-by-key, so we namespace per host and parse the manifest id out of the
-//     recalled text.
+// Uses the real SDK (@mysten-incubation/memwal), per the dashboard quickstart:
+//   const mw = MemWal.create({ key, accountId, serverUrl })
+//   const job = await mw.remember(text); await mw.waitForRememberJob(job.job_id)
+//   const r = await mw.recall(query); r.results[0].text
 //
-// The SDK is imported lazily, so non-MemWal users don't need it installed.
+// Auth is the delegate PRIVATE key (MEMWAL_PRIVATE_KEY) the SDK signs with — not
+// a Bearer token. The SDK is imported lazily so non-MemWal users don't need it.
 //
-// CAVEAT: recall is approximate and remember() may reword text, so this is a
-// best-effort pointer. For an exact last-writer-wins pointer, keep FileAnchorStore
-// (or the on-chain anchor) as the source of truth and mirror to MemWal. Verify the
-// exact SDK method/param names against docs.wal.app before relying on it.
+// CAVEAT: MemWal memory is SEMANTIC (remember() runs an LLM fact-extractor; recall
+// is similarity search), so this pointer is BEST-EFFORT — keep the local/on-chain
+// anchor authoritative for exact last-writer-wins reads. We store + recall a
+// host-tagged line and parse the manifest id from the best matching result.
 
 import type { AnchorStore } from "../../src/lib/memory";
 
 export interface MemWalConfig {
-  serverUrl: string; // MemWal relayer URL
-  delegateKey: string; // Ed25519 delegate-key hex (NOT a Bearer token)
-  accountId: string; // Walrus Memory account id (from the dashboard)
-  namespace?: string; // default "sentinelmem"
+  serverUrl: string; // MEMWAL_SERVER_URL, e.g. https://relayer.memory.walrus.xyz
+  accountId: string; // MEMWAL_ACCOUNT_ID
+  privateKey: string; // MEMWAL_PRIVATE_KEY (delegate private key)
+  topK?: number;
 }
 
 export class MemWalAnchorStore implements AnchorStore {
-  private readonly ns: string;
   private readonly cfg: MemWalConfig;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private mw: any;
 
   constructor(cfg: MemWalConfig) {
     this.cfg = cfg;
-    this.ns = cfg.namespace ?? "sentinelmem";
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -47,43 +41,43 @@ export class MemWalAnchorStore implements AnchorStore {
     try {
       ({ MemWal } = await import("@mysten-incubation/memwal"));
     } catch {
-      throw new Error(
-        "MemWal backend requires the SDK. Run: " +
-          "pnpm add @mysten-incubation/memwal @mysten/sui @mysten/seal @mysten/walrus ai zod",
-      );
+      throw new Error("MemWal backend requires the SDK: pnpm add @mysten-incubation/memwal");
     }
     this.mw = MemWal.create({
-      key: this.cfg.delegateKey,
+      key: this.cfg.privateKey,
       accountId: this.cfg.accountId,
       serverUrl: this.cfg.serverUrl,
-      namespace: this.ns,
     });
     return this.mw;
   }
 
-  private nsFor(host: string): string {
-    return `${this.ns}:${host}`;
+  async set(host: string, manifestBlobId: string): Promise<void> {
+    const mw = await this.client();
+    const text =
+      `SentinelMem anchor for host ${host}: ` +
+      `manifestBlobId=${manifestBlobId} updatedAt=${new Date().toISOString()}`;
+    const job = await mw.remember(text);
+    const jobId = job?.job_id ?? job?.jobId;
+    if (jobId) await mw.waitForRememberJob(jobId);
   }
 
   async get(host: string): Promise<string | null> {
     const mw = await this.client();
-    const r = await mw.recall({
-      query: `anchor manifestBlobId for host ${host}`,
-      namespace: this.nsFor(host),
-      limit: 1,
-      maxDistance: 0.4,
-    });
-    const text: string | undefined = r?.results?.[0]?.text;
-    if (!text) return null;
-    const m = /manifestBlobId=([A-Za-z0-9_-]+)/.exec(text);
-    return m ? m[1] : null;
-  }
-
-  async set(host: string, manifestBlobId: string): Promise<void> {
-    const mw = await this.client();
-    await mw.rememberAndWait(
-      `anchor host=${host} manifestBlobId=${manifestBlobId} updatedAt=${new Date().toISOString()}`,
-      this.nsFor(host),
-    );
+    const r = await mw.recall(`SentinelMem anchor manifestBlobId for host ${host}`);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const results: any[] = r?.results ?? [];
+    let best: string | null = null;
+    let bestAt = "";
+    for (const res of results) {
+      const text: string = res?.text ?? "";
+      if (!text.includes(`host ${host}:`) && !text.includes(`host ${host} `)) continue;
+      const m = /manifestBlobId=([A-Za-z0-9_-]+)/.exec(text);
+      const at = /updatedAt=([0-9T:.\-Z]+)/.exec(text);
+      if (m && (best === null || (at && at[1] > bestAt))) {
+        best = m[1];
+        bestAt = at ? at[1] : "";
+      }
+    }
+    return best;
   }
 }

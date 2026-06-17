@@ -162,13 +162,13 @@ recallable text per host (best-effort, not an exact key — keep the local/on-ch
 anchor as source of truth if you need exact last-writer-wins).
 
 ```bash
-pnpm add @mysten-incubation/memwal @mysten/sui @mysten/seal @mysten/walrus ai zod
-# Create an account + delegate key at https://memory.walrus.xyz/
-export MEMWAL_SERVER_URL=...      # relayer URL
-export MEMWAL_ACCOUNT_ID=...      # from the dashboard
-export MEMWAL_DELEGATE_KEY=...    # Ed25519 delegate-key hex (NOT a Bearer token)
-export MEMWAL_NAMESPACE=sentinelmem
-pnpm sentinel https://example.com/
+# SDK already installed. Creds from the SDK credentials panel at https://memory.walrus.xyz/
+export MEMWAL_ACCOUNT_ID=0x...                     # from the dashboard
+export MEMWAL_SERVER_URL=https://relayer.memory.walrus.xyz
+export MEMWAL_PRIVATE_KEY=<delegate private key>   # SECRET (e.g. .sentinel/memwal-key.txt, gitignored)
+
+pnpm memwal:test                       # verify remember + recall round-trip
+pnpm sentinel "https://example.com/"   # agent routes the pointer through MemWal
 ```
 
 The SDK is imported lazily; only the pointer moves to MemWal (blobs stay on

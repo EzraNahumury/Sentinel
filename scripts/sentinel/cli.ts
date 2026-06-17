@@ -16,7 +16,7 @@
 //   SENTINEL_PUBLISH    write public/sentinel-memory.json for the UI (default on; 0 to skip)
 //
 //   MemWal anchor backend (optional — replaces the local anchor file):
-//   MEMWAL_BASE_URL, MEMWAL_DELEGATE_KEY, MEMWAL_NAMESPACE
+//   MEMWAL_ACCOUNT_ID, MEMWAL_PRIVATE_KEY, MEMWAL_SERVER_URL
 //
 //   On-chain anchoring (optional — requires the published sentinel_memory module):
 //   SENTINEL_ANCHOR_ONCHAIN=1, SENTINEL_PKG, SENTINEL_MEMORY_REGISTRY, SUI_SECRET_KEY, SUI_RPC
@@ -61,23 +61,19 @@ function pct(n: number): string {
 
 // Pick the anchor backend: MemWal if configured, else a local file.
 function makeAnchorStore(): { store: AnchorStore; label: string } {
-  const memwalUrl = process.env.MEMWAL_SERVER_URL ?? process.env.MEMWAL_BASE_URL;
-  if (memwalUrl) {
-    const accountId = process.env.MEMWAL_ACCOUNT_ID;
-    const delegateKey = process.env.MEMWAL_DELEGATE_KEY;
-    if (accountId && delegateKey) {
-      return {
-        store: new MemWalAnchorStore({
-          serverUrl: memwalUrl,
-          accountId,
-          delegateKey,
-          namespace: process.env.MEMWAL_NAMESPACE,
-        }),
-        label: `MemWal (${memwalUrl})`,
-      };
-    }
+  const accountId = process.env.MEMWAL_ACCOUNT_ID;
+  const privateKey = process.env.MEMWAL_PRIVATE_KEY;
+  const serverUrl =
+    process.env.MEMWAL_SERVER_URL ?? "https://relayer.memory.walrus.xyz";
+  if (accountId && privateKey) {
+    return {
+      store: new MemWalAnchorStore({ serverUrl, accountId, privateKey }),
+      label: `MemWal (${serverUrl})`,
+    };
+  }
+  if (accountId || privateKey) {
     console.warn(
-      "  MEMWAL_SERVER_URL set but MEMWAL_ACCOUNT_ID / MEMWAL_DELEGATE_KEY missing — falling back to local anchor file.",
+      "  MemWal partially configured — need BOTH MEMWAL_ACCOUNT_ID and MEMWAL_PRIVATE_KEY; falling back to local anchor file.",
     );
   }
   return {

@@ -14,6 +14,7 @@
     "sentinel": "tsx scripts/sentinel/cli.ts",
     "sentinel:tamper": "tsx scripts/sentinel/tamper.ts",
     "sentinel:audit": "tsx scripts/sentinel/audit-cli.ts",
+    "memwal:test": "tsx scripts/sentinel/memwal-test.ts",
     "cloak:serve": "tsx phishing_site/local-server.ts",
     "test": "tsx scripts/sentinel/sentinel.test.ts",
     "deploy:site": "vite build && site-builder deploy --epochs max ./dist",
@@ -22,13 +23,14 @@
     "tlsn:verify": "tsx scripts/tlsn-verify.ts"
   },
   "dependencies": {
+    "@mysten-incubation/memwal": "^0.0.7",
     "@mysten/dapp-kit-react": "^2.0.3",
     "@mysten/sui": "^2.16.2",
     "@nanostores/react": "^1.0.0",
     "@tanstack/react-query": "^5.90.16",
     "clsx": "^2.1.1",
-    "motion": "^12.40.0",
     "lucide-react": "^0.562.0",
+    "motion": "^12.40.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-globe.gl": "^2.38.0",

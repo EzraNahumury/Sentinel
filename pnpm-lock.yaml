@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@mysten-incubation/memwal':
+        specifier: ^0.0.7
+        version: 0.0.7(@mysten/seal@1.2.0(@mysten/sui@2.17.0(typescript@5.9.3)))(@mysten/sui@2.17.0(typescript@5.9.3))
       '@mysten/dapp-kit-react':
         specifier: ^2.0.3
         version: 2.0.3(@mysten/sui@2.17.0(typescript@5.9.3))(@types/react@19.2.17)(react@19.2.7)(typescript@5.9.3)
@@ -89,7 +92,7 @@ importers:
         version: 5.9.3
       viem:
         specifier: ^2.52.2
-        version: 2.52.2(typescript@5.9.3)(zod@4.4.3)
+        version: 2.52.2(typescript@5.9.3)
       vite:
         specifier: ^8.0.5
         version: 8.0.16(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)
@@ -360,8 +363,27 @@ packages:
   '@lit/task@1.0.3':
     resolution: {integrity: sha512-1gJGJl8WON+2j0y9xfcD+XsS1rvcy3XDgsIhcdUW++yTR8ESjZW6o7dn8M8a4SZM8NnJe6ynS2cKWwsbfLOurg==}
 
+  '@mysten-incubation/memwal@0.0.7':
+    resolution: {integrity: sha512-jZycnsstVX/aP33OyJM3bTciwFiiOEcZV4XfhHGbqh8e9pMV/pbOAfD5m9gxrD3V8en29QGAISBsiMIdP3CIyg==}
+    peerDependencies:
+      '@mysten/seal': '>=1.1.0'
+      '@mysten/sui': '>=2.5.0'
+      '@mysten/walrus': '>=1.0.3'
+      ai: '>=4.0.0'
+      zod: ^3.23.0
+    peerDependenciesMeta:
+      '@mysten/walrus':
+        optional: true
+      ai:
+        optional: true
+      zod:
+        optional: true
+
   '@mysten/bcs@2.0.5':
     resolution: {integrity: sha512-Dop9Xq36DPLlsmIDQZvUg4uJeBBxIGirgp2OXGaEff+mtLKFBoW2HnE3aSTSSpiMQH9XRhjwtiM16zFJhFqz0Q==}
+
+  '@mysten/bcs@2.1.0':
+    resolution: {integrity: sha512-rIR/cDAqDfBDxmYEZXppN/on8gmh1OW0dYi/Bk2kMBZcYMTaBaEtEX1VR6g7HicVxuMbFAIP0/SQkdH7J9Y5dQ==}
 
   '@mysten/codegen@0.10.6':
     resolution: {integrity: sha512-4t1/V/vQLNoZ4XvGP/Aab5dk6zD63uhk2b9/5aMTZl5njswAEm2q57+eTNoq2fn2WKn9HnEK1DqAsSyr8NDn7w==}
@@ -378,6 +400,11 @@ packages:
       '@types/react': '>=17.0.0'
       react: '>=17.0.0'
 
+  '@mysten/seal@1.2.0':
+    resolution: {integrity: sha512-AOykL52LZ8IfI9Uut2nJFlPB9EAyZgLN76ZlN8OpVKCCIM1LE4OPNcVvq1Fpb0dNCUNAkUevv4ZMlkis73TpZQ==}
+    peerDependencies:
+      '@mysten/sui': ^2.18.0
+
   '@mysten/slush-wallet@1.0.5':
     resolution: {integrity: sha512-soP0eZW4uP2S2z5YH7eg0dZQZ7hZyY6F7D2H0Wv93wjFz9DSHlOf1b9mY+2kzH1oO7nSnpdRdL15v8+X3X7f6w==}
     peerDependencies:
@@ -389,6 +416,9 @@ packages:
 
   '@mysten/utils@0.3.3':
     resolution: {integrity: sha512-gVHn5toh24eXXLEyBknwwM2F/tbDgqPX0yj77KtHjuoYUallcQ9vSwGfGsAy39IcTB259Yprt/ZOEwdup+zrpA==}
+
+  '@mysten/utils@0.4.0':
+    resolution: {integrity: sha512-nHlXECBl9kE+AHF/aw5a7JVNizae8Kb71A4H18BV/sXd5/l2BaWNGWVatq05fzJo3hF78AWorDxa++1TgcBKWw==}
 
   '@mysten/wallet-standard@0.20.3':
     resolution: {integrity: sha512-Kp1EpWaQAwANuMoTCJKVdZnEOaE9aJ5PPvIC7qg+J3u6Uf20VsVsQngZllyaS2OQHm+iLlJzcLXHff7ttvQJYw==}
@@ -428,6 +458,9 @@ packages:
   '@noble/curves@2.2.0':
     resolution: {integrity: sha512-T/BoHgFXirb0ENSPBquzX0rcjXeM6Lo892a2jlYJkqk83LqZx0l1Of7DzlKJ6jkpvMrkHSnAcgb5JegL8SeIkQ==}
     engines: {node: '>= 20.19.0'}
+
+  '@noble/ed25519@2.3.0':
+    resolution: {integrity: sha512-M7dvXL2B92/M7dw9+gzuydL8qn/jiqNHaoR3Q+cb1q1GHV7uwE17WCyFMG+Y+TZb5izcaXk5TdJRrDUxHXL78A==}
 
   '@noble/hashes@1.8.0':
     resolution: {integrity: sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==}
@@ -1701,9 +1734,21 @@ snapshots:
     dependencies:
       '@lit/reactive-element': 2.1.2
 
+  '@mysten-incubation/memwal@0.0.7(@mysten/seal@1.2.0(@mysten/sui@2.17.0(typescript@5.9.3)))(@mysten/sui@2.17.0(typescript@5.9.3))':
+    dependencies:
+      '@mysten/seal': 1.2.0(@mysten/sui@2.17.0(typescript@5.9.3))
+      '@mysten/sui': 2.17.0(typescript@5.9.3)
+      '@noble/ed25519': 2.3.0
+      '@noble/hashes': 2.2.0
+
   '@mysten/bcs@2.0.5':
     dependencies:
       '@mysten/utils': 0.3.3
+      '@scure/base': 2.2.0
+
+  '@mysten/bcs@2.1.0':
+    dependencies:
+      '@mysten/utils': 0.4.0
       '@scure/base': 2.2.0
 
   '@mysten/codegen@0.10.6':
@@ -1752,6 +1797,13 @@ snapshots:
       - '@mysten/sui'
       - typescript
 
+  '@mysten/seal@1.2.0(@mysten/sui@2.17.0(typescript@5.9.3))':
+    dependencies:
+      '@mysten/bcs': 2.1.0
+      '@mysten/sui': 2.17.0(typescript@5.9.3)
+      '@noble/curves': 2.2.0
+      '@noble/hashes': 2.2.0
+
   '@mysten/slush-wallet@1.0.5(@mysten/sui@2.17.0(typescript@5.9.3))(typescript@5.9.3)':
     dependencies:
       '@mysten/sui': 2.17.0(typescript@5.9.3)
@@ -1785,6 +1837,10 @@ snapshots:
       - typescript
 
   '@mysten/utils@0.3.3':
+    dependencies:
+      '@scure/base': 2.2.0
+
+  '@mysten/utils@0.4.0':
     dependencies:
       '@scure/base': 2.2.0
 
@@ -1827,6 +1883,8 @@ snapshots:
   '@noble/curves@2.2.0':
     dependencies:
       '@noble/hashes': 2.2.0
+
+  '@noble/ed25519@2.3.0': {}
 
   '@noble/hashes@1.8.0': {}
 
@@ -2190,10 +2248,9 @@ snapshots:
 
   '@webcomponents/scoped-custom-element-registry@0.0.10': {}
 
-  abitype@1.2.3(typescript@5.9.3)(zod@4.4.3):
+  abitype@1.2.3(typescript@5.9.3):
     optionalDependencies:
       typescript: 5.9.3
-      zod: 4.4.3
 
   accessor-fn@1.5.3: {}
 
@@ -2523,7 +2580,7 @@ snapshots:
 
   object-assign@4.1.1: {}
 
-  ox@0.14.29(typescript@5.9.3)(zod@4.4.3):
+  ox@0.14.29(typescript@5.9.3):
     dependencies:
       '@adraffy/ens-normalize': 1.11.1
       '@noble/ciphers': 1.3.0
@@ -2531,7 +2588,7 @@ snapshots:
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
-      abitype: 1.2.3(typescript@5.9.3)(zod@4.4.3)
+      abitype: 1.2.3(typescript@5.9.3)
       eventemitter3: 5.0.1
     optionalDependencies:
       typescript: 5.9.3
@@ -2733,15 +2790,15 @@ snapshots:
     optionalDependencies:
       typescript: 5.9.3
 
-  viem@2.52.2(typescript@5.9.3)(zod@4.4.3):
+  viem@2.52.2(typescript@5.9.3):
     dependencies:
       '@noble/curves': 1.9.1
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
-      abitype: 1.2.3(typescript@5.9.3)(zod@4.4.3)
+      abitype: 1.2.3(typescript@5.9.3)
       isows: 1.0.7(ws@8.20.1)
-      ox: 0.14.29(typescript@5.9.3)(zod@4.4.3)
+      ox: 0.14.29(typescript@5.9.3)
       ws: 8.20.1
     optionalDependencies:
       typescript: 5.9.3
