@@ -123,6 +123,42 @@ export interface HostManifest {
 }
 
 /** The one mutable pointer: host -> latest manifest blob id. */
+/**
+ * A second-agent (Auditor) attestation over an Analyst's case file. The auditor
+ * trusts memory it did NOT create by re-verifying the Analyst's signature
+ * against a PINNED analyst key (not by trusting a live peer) — trust-minimized
+ * cross-agent coordination. Signed by the auditor's own key.
+ */
+export interface AuditRecord {
+  schema: "sentinelmem.audit.v1";
+  auditor: string; // auditor public key (base64 SPKI DER)
+  host: string;
+  analystSigner: string; // the analyst key the auditor pinned
+  analystEntryBlobId: string; // the case file being audited
+  signatureValid: boolean;
+  proofVerified: boolean | null; // null when not checked (e.g. notary unavailable / UNVERIFIED tier)
+  attestation: "concur" | "dissent" | "unverifiable";
+  reason: string;
+  auditedAt: string;
+  integrity?: IntegrityEnvelope; // auditor's signature over this audit record
+}
+
+/** Canonical message the auditor signs (excludes the integrity envelope). */
+export function canonicalAuditMessage(a: AuditRecord): string {
+  return JSON.stringify([
+    a.schema,
+    a.auditor,
+    a.host,
+    a.analystSigner,
+    a.analystEntryBlobId,
+    a.signatureValid,
+    a.proofVerified,
+    a.attestation,
+    a.reason,
+    a.auditedAt,
+  ]);
+}
+
 export interface AnchorStore {
   get(host: string): Promise<string | null>;
   set(host: string, manifestBlobId: string): Promise<void>;

@@ -17,7 +17,14 @@ import {
   verify as nodeVerify,
   createPrivateKey,
   createPublicKey,
+  createHash,
 } from "node:crypto";
+
+/** Short, distinguishing fingerprint of a public key (all ed25519 SPKI keys
+ *  share the same base64 prefix, so slicing the head shows nothing useful). */
+export function keyFingerprint(publicKeyB64: string): string {
+  return createHash("sha256").update(publicKeyB64).digest("hex").slice(0, 12);
+}
 
 export interface Signer {
   /** base64 SPKI DER public key — pin this on recall. */

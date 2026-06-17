@@ -29,7 +29,7 @@ import { LLM_PROVIDER, ANALYST_MODEL } from "./analyst";
 import { FileAnchorStore } from "./anchor-store";
 import { MemWalAnchorStore } from "./memwal-store";
 import { createOnchainAnchor, type OnAnchor } from "./onchain";
-import { loadOrCreateSigner } from "./signer";
+import { loadOrCreateSigner, keyFingerprint } from "./signer";
 import { DEFAULT_NOTARY_URL } from "../tlsn/harness";
 import type { AnchorStore, MemoryWalrusOptions } from "../../src/lib/memory";
 
@@ -154,7 +154,7 @@ async function main(): Promise<void> {
     process.env.SENTINEL_SIGNER ?? ".sentinel/agent-key.pem",
   );
   console.log(`Trusted notary key: ${prov.notaryKeyHex.slice(0, 16)}…`);
-  console.log(`Agent signer key  : ${signer.publicKeyB64.slice(0, 16)}… (memory is signed + pinned)\n`);
+  console.log(`Agent signer key  : [${keyFingerprint(signer.publicKeyB64)}] (memory is signed + pinned)\n`);
 
   const results: InvestigateResult[] = [];
   try {

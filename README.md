@@ -50,6 +50,9 @@ the memory wasn't tampered, without trusting our server.
   signature) **and** provenance (TLSNotary). Not a file dump.
 - **Long‑running, stateful agent** — recall across sessions changes behavior
   (re‑flags a returning cloaker instantly).
+- **Multi‑agent, trust‑minimized** — a second **Auditor** agent (distinct key)
+  consumes the Analyst's Walrus memory and independently re‑verifies it by
+  checking the signature, not by trusting a live peer (`pnpm sentinel:audit`).
 - **Artifact‑driven** — proofs, screenshots, HTML, case files, and manifests are
   durable Walrus artifacts the agent reuses.
 - **Pluggable** — the pointer backend swaps between a local file, an on‑chain
@@ -132,6 +135,13 @@ pnpm sentinel "https://example.com/"     # → "signature invalid — record tam
 # Cloaking: a local target that serves different content per device
 pnpm cloak:serve                                          # http://localhost:8799/cloak
 SENTINEL_NO_PROOF=1 pnpm sentinel "http://localhost:8799/cloak"   # → CLOAKING (2 clusters)
+
+# Multi-agent: a second agent (Auditor, distinct key) independently re-verifies
+# the Analyst's memory — trust-minimized (it verifies the signature, not a peer)
+pnpm sentinel "https://example.com/"     # Analyst writes signed memory
+pnpm sentinel:audit example.com          # Auditor CONCUR (re-verified the Analyst signature)
+pnpm sentinel:tamper example.com
+pnpm sentinel:audit example.com          # Auditor DISSENT — catches the tampered record
 ```
 
 ### 5. Tests
@@ -173,6 +183,7 @@ the signature client‑side via WebCrypto Ed25519 — server‑less confirmation
 | Provenance engine (multi‑vantage capture + prove + re‑verify) | `scripts/sentinel/provenance.ts` |
 | Analyst agent (pluggable Ollama/Claude, structured output) | `scripts/sentinel/analyst.ts` |
 | Orchestrator (`investigate`) | `scripts/sentinel/agent.ts` |
+| **Auditor agent** (2nd agent — independent re-verify) | `scripts/sentinel/auditor.ts`, `audit-cli.ts` |
 | Agent record signer (Ed25519, pinned) | `scripts/sentinel/signer.ts` |
 | Anchor backends (file / MemWal) | `scripts/sentinel/anchor-store.ts`, `memwal-store.ts` |
 | On‑chain anchor client | `scripts/sentinel/onchain.ts` |

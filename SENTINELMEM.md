@@ -230,7 +230,31 @@ provenance, is integrity-protected.
 | `WALRUS_PUBLISHER` / `WALRUS_AGGREGATOR` | testnet defaults | Walrus endpoints |
 | `SENTINEL_EPOCHS` | `5` | Memory blob lifetime (epochs) — outlives the demo |
 | `SENTINEL_ANCHORS` | `.sentinel/anchors.json` | Anchor pointer file |
-| `SENTINEL_SIGNER` | `.sentinel/agent-key.pem` | Agent Ed25519 signing key (auto-generated) |
+| `SENTINEL_SIGNER` | `.sentinel/agent-key.pem` | Analyst Ed25519 signing key (auto-generated) |
+| `SENTINEL_AUDITOR_SIGNER` | `.sentinel/auditor-key.pem` | Auditor agent's own key (distinct identity) |
+| `SENTINEL_ANALYST_KEY` | from published index | Analyst key the Auditor pins (trust anchor) |
+
+## Multi-agent: the Auditor (trust-minimized cross-agent coordination)
+
+A second agent — the **Auditor** (`scripts/sentinel/auditor.ts`, `pnpm
+sentinel:audit <host>`) — consumes the Analyst's memory from Walrus and
+**independently re-verifies** each case file by checking the Analyst's Ed25519
+signature against a **pinned analyst key**. It trusts the data because it can
+re-verify it, **not** because it trusts a live peer. It then emits its own
+signed `AuditRecord` to Walrus, referencing the analyst entry.
+
+```bash
+pnpm sentinel "https://example.com/"   # Analyst (key A) writes signed memory
+pnpm sentinel:audit example.com        # Auditor (key B) CONCUR — re-verified A's signature
+pnpm sentinel:tamper example.com
+pnpm sentinel:audit example.com        # Auditor DISSENT — tamper caught independently
+```
+
+The two agents are distinct signing identities (the CLI prints each key's
+fingerprint). The Auditor pins the Analyst key from the published index
+(`signerPublicKey`) or `SENTINEL_ANALYST_KEY`; its own key is
+`SENTINEL_AUDITOR_SIGNER` (default `.sentinel/auditor-key.pem`). This is
+delegation + cross-agent memory sharing with Walrus as the only shared channel.
 
 ## Honest limitations
 

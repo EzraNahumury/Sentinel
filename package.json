@@ -13,6 +13,7 @@
     "verify:once": "tsx scripts/verify-scans.ts --once",
     "sentinel": "tsx scripts/sentinel/cli.ts",
     "sentinel:tamper": "tsx scripts/sentinel/tamper.ts",
+    "sentinel:audit": "tsx scripts/sentinel/audit-cli.ts",
     "cloak:serve": "tsx phishing_site/local-server.ts",
     "test": "tsx scripts/sentinel/sentinel.test.ts",
     "deploy:site": "vite build && site-builder deploy --epochs max ./dist",
