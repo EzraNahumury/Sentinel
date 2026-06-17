@@ -175,12 +175,38 @@ export class InMemoryAnchorStore implements AnchorStore {
   }
 }
 
+/**
+ * A Seal-encrypted case file, stored on Walrus in place of the plaintext entry.
+ * The signed `CaseFileEntry` (integrity envelope included) is encrypted whole, so
+ * decryption yields a record whose signature still re-verifies. `sealId` is the
+ * Seal key-id used at encryption and must be presented again to decrypt.
+ */
+export interface SealedEnvelope {
+  schema: "sentinelmem.sealed.v1";
+  sealId: string;
+  ciphertext: string; // base64 of the Seal-encrypted case file JSON
+}
+
+/**
+ * Optional encrypt/decrypt hook for case files. Kept dependency-free here (an
+ * interface only) so this module stays isomorphic; the agent supplies a Seal
+ * implementation (see scripts/sentinel/seal-cipher.ts) when SENTINEL_SEAL=1.
+ * Manifests stay plaintext — only the per-investigation case file is encrypted.
+ */
+export interface CaseFileCipher {
+  seal(entry: CaseFileEntry): Promise<SealedEnvelope>;
+  open(env: SealedEnvelope): Promise<CaseFileEntry>;
+}
+
 export interface MemoryWalrusOptions {
   publisher?: string;
   aggregator?: string;
   /** Walrus blob lifetime in epochs. Memory must outlive a single demo, so
    *  default higher than the evidence-blob default of 1. */
   epochs?: number;
+  /** When set, case files are encrypted with this cipher before Walrus and
+   *  decrypted on recall. Off by default (plaintext memory). */
+  cipher?: CaseFileCipher;
 }
 
 /** Normalized host key for a URL (the memory is keyed by host). */
@@ -204,7 +230,8 @@ export async function writeCaseFile(
   entry: CaseFileEntry,
   opts: MemoryWalrusOptions = {},
 ): Promise<string> {
-  return uploadToWalrus(JSON.stringify(entry), {
+  const payload = opts.cipher ? await opts.cipher.seal(entry) : entry;
+  return uploadToWalrus(JSON.stringify(payload), {
     publisher: opts.publisher,
     epochs: opts.epochs ?? 5,
     contentType: "application/json",
@@ -214,8 +241,18 @@ export async function writeCaseFile(
 export async function readCaseFile(
   blobId: string,
   aggregator: string = DEFAULT_WALRUS_AGGREGATOR,
+  cipher?: CaseFileCipher,
 ): Promise<CaseFileEntry> {
-  return fetchJson<CaseFileEntry>(blobId, aggregator);
+  const raw = await fetchJson<CaseFileEntry | SealedEnvelope>(blobId, aggregator);
+  if ((raw as SealedEnvelope).schema === "sentinelmem.sealed.v1") {
+    if (!cipher) {
+      throw new Error(
+        "case file is Seal-encrypted — a reader cipher is required to recall it",
+      );
+    }
+    return cipher.open(raw as SealedEnvelope);
+  }
+  return raw as CaseFileEntry;
 }
 
 async function writeManifest(
@@ -327,7 +364,7 @@ export async function recallCaseFiles(
   for (const blobId of manifest.entries) {
     let entry: CaseFileEntry;
     try {
-      entry = await readCaseFile(blobId, aggregator);
+      entry = await readCaseFile(blobId, aggregator, opts.cipher);
     } catch (err) {
       rejected.push({ blobId, reason: `unreadable: ${(err as Error).message}` });
       continue;

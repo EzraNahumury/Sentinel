@@ -226,8 +226,23 @@ pnpm seal:demo
 Config + reader key live under `.sentinel/` (gitignored). Key servers are the
 Mysten testnet open-mode servers; `seal.ts` backdates the session creation_time
 to absorb client clock lead (the servers reject any future-dated certificate).
-The agent's default flow still stores plaintext — Seal is opt-in per the
-`createSealCrypto` seam.
+
+**Wired into the agent.** Once `.sentinel/seal.json` exists, run the agent with
+`SENTINEL_SEAL=1` and every case file is encrypted before Walrus and decrypted on
+recall — no other change:
+
+```bash
+SENTINEL_SEAL=1 pnpm sentinel "https://example.com/"   # writes a SEALED case file
+SENTINEL_SEAL=1 pnpm sentinel "https://example.com/"   # recall: decrypt + re-verify -> "1 prior memory verified"
+```
+
+`cli.ts` builds the cipher (`scripts/sentinel/seal-cipher.ts`) and passes it as
+`MemoryWalrusOptions.cipher`; `appendCaseFile`/`recallCaseFiles` then seal/open
+transparently (`src/lib/memory.ts` stays dependency-free — it only knows the
+`CaseFileCipher` interface). The signed `CaseFileEntry` is encrypted whole, so a
+decrypted record's signature still re-verifies. Manifests stay plaintext (host +
+blob ids only). `pnpm seal:memtest` exercises this exact path deterministically
+(no notary/LLM). Default runs (no `SENTINEL_SEAL`) store plaintext, unchanged.
 
 ### Demo moment 2 — tampered memory is rejected
 

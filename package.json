@@ -17,6 +17,7 @@
     "memwal:test": "tsx scripts/sentinel/memwal-test.ts",
     "seal:setup": "tsx scripts/sentinel/seal-setup.ts",
     "seal:demo": "tsx scripts/sentinel/seal-demo.ts",
+    "seal:memtest": "tsx scripts/sentinel/seal-memory-test.ts",
     "cloak:serve": "tsx phishing_site/local-server.ts",
     "test": "tsx scripts/sentinel/sentinel.test.ts",
     "deploy:site": "vite build && site-builder deploy --epochs max ./dist",

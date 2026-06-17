@@ -14,6 +14,8 @@
 //   SENTINEL_ANCHORS    local anchor file (default .sentinel/anchors.json)
 //   SENTINEL_SIGNER     agent Ed25519 signing key PEM (default .sentinel/agent-key.pem)
 //   SENTINEL_PUBLISH    write public/sentinel-memory.json for the UI (default on; 0 to skip)
+//   SENTINEL_SEAL       =1 to encrypt case files with Seal before Walrus (needs
+//                       .sentinel/seal.json + reader key — see SENTINELMEM.md)
 //
 //   MemWal anchor backend (optional — replaces the local anchor file):
 //   MEMWAL_ACCOUNT_ID, MEMWAL_PRIVATE_KEY, MEMWAL_SERVER_URL
@@ -131,6 +133,21 @@ async function publishIndex(
 async function main(): Promise<void> {
   const { store: anchors, label: anchorLabel } = makeAnchorStore();
   const onAnchor = makeOnAnchor();
+
+  // Optional: encrypt case files with Seal before Walrus (SENTINEL_SEAL=1).
+  let cipherLabel = "plaintext";
+  if (/^(1|true|yes|on)$/i.test(process.env.SENTINEL_SEAL ?? "")) {
+    try {
+      const { makeSealCaseFileCipher } = await import("./seal-cipher");
+      const sealed = await makeSealCaseFileCipher();
+      opts.cipher = sealed.cipher;
+      cipherLabel = sealed.label;
+    } catch (err) {
+      console.error(`  SENTINEL_SEAL=1 but Seal setup failed: ${(err as Error).message}`);
+      console.error("  Complete the Seal setup (see SENTINELMEM.md) or unset SENTINEL_SEAL.");
+      process.exit(1);
+    }
+  }
   const prov = new SentinelProvenance({
     notaryUrl: process.env.TLSN_NOTARY_URL ?? DEFAULT_NOTARY_URL,
     publisher: opts.publisher,
@@ -144,6 +161,7 @@ async function main(): Promise<void> {
     }`,
   );
   console.log(`Anchor backend: ${anchorLabel}${onAnchor ? " + on-chain" : ""}`);
+  console.log(`Memory encryption: ${cipherLabel}`);
   console.log("Starting notary key fetch, TLSNotary harness, headless browser…");
   await prov.start();
   const signer = await loadOrCreateSigner(

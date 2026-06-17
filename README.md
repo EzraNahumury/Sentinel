@@ -237,11 +237,12 @@ Playwright capture.
 
 - **MemWal** — `MemWalAnchorStore` wraps the `@mysten-incubation/memwal` SDK; set
   `MEMWAL_*` to route the pointer through Walrus Memory.
-- **Seal** — `scripts/sentinel/seal.ts` encrypts case files before Walrus so only
-  whitelisted readers can decrypt. **Live on testnet**: a fresh `whitelist` policy
-  package gates a threshold (2-of-2 Mysten key servers). Run the full
-  encrypt → Walrus → decrypt round-trip, plus a denied non-whitelisted reader,
-  with `pnpm seal:demo`.
+- **Seal** — encrypts case files before Walrus so only whitelisted readers can
+  decrypt. **Live on testnet** (fresh `whitelist` policy package, 2-of-2 Mysten
+  key servers) and **wired into the agent**: run with `SENTINEL_SEAL=1` and every
+  case file is sealed before Walrus and decrypted + re-verified on recall.
+  `pnpm seal:demo` runs the standalone round-trip (incl. a denied non-whitelisted
+  reader); `pnpm seal:memtest` checks the agent code path deterministically.
 - **Walrus Sites** — the build sets `base: "./"` + ships `ws-resources.json`;
   deploy the inspector with `pnpm deploy:site` (site‑builder).
 
