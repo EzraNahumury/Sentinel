@@ -128,19 +128,27 @@ Walrus. Pin a specific agent key with `VITE_SENTINEL_SIGNER=<base64-spki>`
 ### On-chain anchoring (optional, production path)
 
 The `sentinel_memory` Move module anchors each host's manifest pointer on Sui as
-an append-only `MemoryAnchored` event. Activate it:
+an append-only `MemoryAnchored` event.
+
+**Deployed & verified on Sui testnet:**
+- Package: `0xca26b2e73757ee26fd7e32f1f656bcffa81e5bd42b0fe115ca9ba90ee3297c6e`
+- `MemoryRegistry` (shared): `0x4df6d15626ffde080ab1b5bf15728fc107a7007aa7adfba0eb059a57a21927b5`
+- `Market` (shared, scan_market): `0x86db8e0cf8a5cc9f2a1fbbd163ecc0c504b97b291e69ea2867e13e496110c267`
+- Verified `MemoryAnchored` event: tx `7A87ekqwshY7g9JHHZzdXztdi2pZirpZCxD558b8xTGZ`
+
+Activate it (or re-publish your own):
 
 ```bash
 # 1) republish the package (adds the sentinel_memory module) and note the new
 #    package id + the shared MemoryRegistry object id from the publish output
 sui client publish --gas-budget 200000000 move/scan_market
 
-# 2) point the agent at it and turn anchoring on
+# 2) point the agent at it and turn anchoring on (testnet values above)
 export SENTINEL_ANCHOR_ONCHAIN=1
-export SENTINEL_PKG=0x...            # new package id
-export SENTINEL_MEMORY_REGISTRY=0x... # shared MemoryRegistry object id
-export SUI_SECRET_KEY=suiprivkey...   # anchoring agent key
-pnpm sentinel https://example.com/    # prints the anchor tx digest
+export SENTINEL_PKG=0xca26b2e73757ee26fd7e32f1f656bcffa81e5bd42b0fe115ca9ba90ee3297c6e
+export SENTINEL_MEMORY_REGISTRY=0x4df6d15626ffde080ab1b5bf15728fc107a7007aa7adfba0eb059a57a21927b5
+export SUI_SECRET_KEY=suiprivkey...   # anchoring agent key (export via `sui keytool export`)
+pnpm sentinel https://example.com/    # prints the on-chain anchor tx digest
 ```
 
 `scripts/sentinel/onchain.ts` calls the move function by string target, so it
