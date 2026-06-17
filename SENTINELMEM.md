@@ -189,15 +189,45 @@ site-builder convert <OBJECT_ID_FROM_OUTPUT>   # → https://<base36>.wal.app
 The first deploy writes `object_id` into `ws-resources.json` (commit it so
 re-deploys update the same site). Optionally attach a SuiNS name → `https://<name>.wal.app`.
 
-### Seal (encrypt case files — opt-in privacy)
+### Seal (encrypt case files — live on testnet)
 
-`scripts/sentinel/seal.ts` encrypts a case file before Walrus and decrypts for
-authorized readers via a Seal allowlist policy. Needs on-chain setup you deploy
-(publish Seal's `whitelist.move` pattern, get key-server object ids), then set
-`SENTINEL_SEAL=1`, `SEAL_PKG`, `SEAL_WHITELIST`, `SEAL_KEY_SERVERS`,
-`SEAL_THRESHOLD`, and wire `encryptJson`/`decryptJson` around the case-file
-write/read. The default flow stores plaintext (demo-friendly); Seal is the
-private-investigation upgrade.
+`scripts/sentinel/seal.ts` encrypts a case file before Walrus so only addresses
+on an on-chain whitelist can decrypt — the privacy upgrade over the plaintext
+default. It is **activated and verified end-to-end** against the live Mysten
+testnet key servers:
+
+```bash
+pnpm seal:demo
+#  1. encrypt a case file (threshold 2-of-2 key servers + on-chain whitelist)
+#  2. store the ciphertext as a Walrus blob
+#  3. read it back + decrypt as the whitelisted reader  -> recovered == original
+#  4. a reader NOT on the whitelist is denied the key    -> NoAccess
+```
+
+On-chain pieces (already deployed; see the README table):
+
+- **Policy** — `move/seal_policy` is the canonical Seal `whitelist` pattern,
+  published as a **fresh package** (the Seal SDK rejects upgraded packages for
+  `SessionKey`). `seal_approve(id, &Whitelist)` is what the key servers dry-run.
+- **Whitelist** — a shared object; the reader's Sui address is added with the
+  admin `Cap`. Key-id = `[whitelist id][nonce]`, so it carries the policy prefix.
+
+Reproduce the setup on a new network:
+
+```bash
+sui client publish move/seal_policy --gas-budget 200000000           # -> packageId (v1)
+READER=$(pnpm seal:setup)                                            # reader address (no gas)
+sui client call --package <PKG> --module whitelist --function create_whitelist_entry  # -> Whitelist + Cap
+sui client call --package <PKG> --module whitelist --function add --args <WL> <CAP> $READER
+pnpm seal:setup <PKG> <WL> <CAP>                                     # writes .sentinel/seal.json
+pnpm seal:demo
+```
+
+Config + reader key live under `.sentinel/` (gitignored). Key servers are the
+Mysten testnet open-mode servers; `seal.ts` backdates the session creation_time
+to absorb client clock lead (the servers reject any future-dated certificate).
+The agent's default flow still stores plaintext — Seal is opt-in per the
+`createSealCrypto` seam.
 
 ### Demo moment 2 — tampered memory is rejected
 

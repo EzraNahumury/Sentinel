@@ -10,13 +10,19 @@ importers:
     dependencies:
       '@mysten-incubation/memwal':
         specifier: ^0.0.7
-        version: 0.0.7(@mysten/seal@1.2.0(@mysten/sui@2.17.0(typescript@5.9.3)))(@mysten/sui@2.17.0(typescript@5.9.3))
+        version: 0.0.7(@mysten/seal@1.2.0(@mysten/sui@2.17.0(typescript@5.9.3)))(@mysten/sui@2.17.0(typescript@5.9.3))(@mysten/walrus@1.2.0(@mysten/sui@2.17.0(typescript@5.9.3)))
       '@mysten/dapp-kit-react':
         specifier: ^2.0.3
         version: 2.0.3(@mysten/sui@2.17.0(typescript@5.9.3))(@types/react@19.2.17)(react@19.2.7)(typescript@5.9.3)
+      '@mysten/seal':
+        specifier: ^1.2.0
+        version: 1.2.0(@mysten/sui@2.17.0(typescript@5.9.3))
       '@mysten/sui':
         specifier: ^2.16.2
         version: 2.17.0(typescript@5.9.3)
+      '@mysten/walrus':
+        specifier: ^1.2.0
+        version: 1.2.0(@mysten/sui@2.17.0(typescript@5.9.3))
       '@nanostores/react':
         specifier: ^1.0.0
         version: 1.1.0(nanostores@1.3.0)(react@19.2.7)
@@ -424,6 +430,14 @@ packages:
     resolution: {integrity: sha512-Kp1EpWaQAwANuMoTCJKVdZnEOaE9aJ5PPvIC7qg+J3u6Uf20VsVsQngZllyaS2OQHm+iLlJzcLXHff7ttvQJYw==}
     peerDependencies:
       '@mysten/sui': '*'
+
+  '@mysten/walrus-wasm@0.3.0':
+    resolution: {integrity: sha512-uuTbK4woj+R4bQILLcSxBJCy1rIL3EDELnA7jjWbC3Q9bsQZFzwEKOPVtei4DKb3nT7zeALD/ky24MkeUZyDNQ==}
+
+  '@mysten/walrus@1.2.0':
+    resolution: {integrity: sha512-OBgqbgkZurhMkvZHYoR/XeitMcXYDjbu8knP43oIKpUabSp/Cs7pbSRFLFYxQA+9/cTgW3NXGL0KJkKJ/L+JYw==}
+    peerDependencies:
+      '@mysten/sui': ^2.18.0
 
   '@mysten/window-wallet-core@0.1.6':
     resolution: {integrity: sha512-vKx4RVn+6sfMHnoFIK3hJ3pxYcy88FdW+BjaFp8GpcGCXC0ImK0HTLNPC0JxeQWmjgDe1eXIMPpY9/eAMU9Azw==}
@@ -1005,6 +1019,9 @@ packages:
   data-bind-mapper@1.0.3:
     resolution: {integrity: sha512-QmU3lyEnbENQPo0M1F9BMu4s6cqNNp8iJA+b/HP2sSb7pf3dxwF3+EP1eO69rwBfH9kFJ1apmzrtogAmVt2/Xw==}
     engines: {node: '>=12'}
+
+  dataloader@2.2.3:
+    resolution: {integrity: sha512-y2krtASINtPFS1rSDjacrFgn1dcUuoREVabwlOGOe4SdxenREqwjwjElAdwvbGM7kgZz9a3KVicWR7vcz8rnzA==}
 
   delaunator@5.1.0:
     resolution: {integrity: sha512-AGrQ4QSgssa1NGmWmLPqN5NY2KajF5MqxetNEO+o0n3ZwZZeTmt7bBnvzHWrmkZFxGgr4HdyFgelzgi06otLuQ==}
@@ -1734,12 +1751,14 @@ snapshots:
     dependencies:
       '@lit/reactive-element': 2.1.2
 
-  '@mysten-incubation/memwal@0.0.7(@mysten/seal@1.2.0(@mysten/sui@2.17.0(typescript@5.9.3)))(@mysten/sui@2.17.0(typescript@5.9.3))':
+  '@mysten-incubation/memwal@0.0.7(@mysten/seal@1.2.0(@mysten/sui@2.17.0(typescript@5.9.3)))(@mysten/sui@2.17.0(typescript@5.9.3))(@mysten/walrus@1.2.0(@mysten/sui@2.17.0(typescript@5.9.3)))':
     dependencies:
       '@mysten/seal': 1.2.0(@mysten/sui@2.17.0(typescript@5.9.3))
       '@mysten/sui': 2.17.0(typescript@5.9.3)
       '@noble/ed25519': 2.3.0
       '@noble/hashes': 2.2.0
+    optionalDependencies:
+      '@mysten/walrus': 1.2.0(@mysten/sui@2.17.0(typescript@5.9.3))
 
   '@mysten/bcs@2.0.5':
     dependencies:
@@ -1848,6 +1867,16 @@ snapshots:
     dependencies:
       '@mysten/sui': 2.17.0(typescript@5.9.3)
       '@wallet-standard/core': 1.1.1
+
+  '@mysten/walrus-wasm@0.3.0': {}
+
+  '@mysten/walrus@1.2.0(@mysten/sui@2.17.0(typescript@5.9.3))':
+    dependencies:
+      '@mysten/bcs': 2.1.0
+      '@mysten/sui': 2.17.0(typescript@5.9.3)
+      '@mysten/utils': 0.4.0
+      '@mysten/walrus-wasm': 0.3.0
+      dataloader: 2.2.3
 
   '@mysten/window-wallet-core@0.1.6(typescript@5.9.3)':
     dependencies:
@@ -2335,6 +2364,8 @@ snapshots:
   data-bind-mapper@1.0.3:
     dependencies:
       accessor-fn: 1.5.3
+
+  dataloader@2.2.3: {}
 
   delaunator@5.1.0:
     dependencies:

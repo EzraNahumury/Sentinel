@@ -77,6 +77,8 @@ claimed host → rejected. Anyone can re‑check it — even in the browser.
 | `MemoryAnchored` event | verified — agent‑driven anchor tx `GjknGzPK5S3ctGKebj8Ndw7PWhQgz1XBy8yt519RA1Dr` |
 | **Walrus Site** (inspector UI) | object `0xf416e087b8ea080a6b8e0e2f290e14e6600ef022160c5a3c6904ac38d689cd16` |
 | Walrus Site base36 | `630ffwu54fzvssvdjm350s6ecvon1pmtadwv0aqg0pdj4s1o9i` |
+| **Seal policy** (`whitelist`) | package `0x96adf5e3d28fe56db65e9aaf205017759a2bc41b4c9f1a0a8f44d037f9c9c167` |
+| Seal `Whitelist` (shared) | `0xc43457fae4d6478ef444cdc4155f376f75ee0d4238960f94fc2a269235d7bac1` |
 
 Explore the package on [Suiscan](https://suiscan.com/testnet/object/0xca26b2e73757ee26fd7e32f1f656bcffa81e5bd42b0fe115ca9ba90ee3297c6e).
 The inspector UI is deployed as a **Walrus Site** (HTML/JS/CSS stored on Walrus,
@@ -227,7 +229,7 @@ underlying evidence‑acquisition layer.
 
 **Walrus** (memory + evidence) · **Sui Move** (on‑chain anchor) · **TLSNotary**
 (provenance, headless WASM‑MPC harness) · pluggable LLM (**Ollama** local/cloud or
-**Claude**) · **MemWal**‑ and **Seal**‑ready · **Walrus Sites**‑deployable ·
+**Claude**) · **MemWal** pointer backend · **Seal** encryption (live) · **Walrus Sites** (deployed) ·
 React + Vite + Tailwind inspector with in‑browser Ed25519 verification ·
 Playwright capture.
 
@@ -235,8 +237,11 @@ Playwright capture.
 
 - **MemWal** — `MemWalAnchorStore` wraps the `@mysten-incubation/memwal` SDK; set
   `MEMWAL_*` to route the pointer through Walrus Memory.
-- **Seal** — `scripts/sentinel/seal.ts` encrypts case files before Walrus for
-  authorized readers (needs a deployed allowlist policy + key servers).
+- **Seal** — `scripts/sentinel/seal.ts` encrypts case files before Walrus so only
+  whitelisted readers can decrypt. **Live on testnet**: a fresh `whitelist` policy
+  package gates a threshold (2-of-2 Mysten key servers). Run the full
+  encrypt → Walrus → decrypt round-trip, plus a denied non-whitelisted reader,
+  with `pnpm seal:demo`.
 - **Walrus Sites** — the build sets `base: "./"` + ships `ws-resources.json`;
   deploy the inspector with `pnpm deploy:site` (site‑builder).
 

@@ -1,7 +1,8 @@
 node_modules
 dist
-move/scan_market/build
-move/scan_market/package_summaries
+move/*/build/
+move/*/package_summaries/
+move/*/Published.toml
 public/cre-verdicts.json
 public/sentinel-memory.json
 .sentinel/

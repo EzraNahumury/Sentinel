@@ -15,6 +15,8 @@
     "sentinel:tamper": "tsx scripts/sentinel/tamper.ts",
     "sentinel:audit": "tsx scripts/sentinel/audit-cli.ts",
     "memwal:test": "tsx scripts/sentinel/memwal-test.ts",
+    "seal:setup": "tsx scripts/sentinel/seal-setup.ts",
+    "seal:demo": "tsx scripts/sentinel/seal-demo.ts",
     "cloak:serve": "tsx phishing_site/local-server.ts",
     "test": "tsx scripts/sentinel/sentinel.test.ts",
     "deploy:site": "vite build && site-builder deploy --epochs max ./dist",
@@ -25,7 +27,9 @@
   "dependencies": {
     "@mysten-incubation/memwal": "^0.0.7",
     "@mysten/dapp-kit-react": "^2.0.3",
+    "@mysten/seal": "^1.2.0",
     "@mysten/sui": "^2.16.2",
+    "@mysten/walrus": "^1.2.0",
     "@nanostores/react": "^1.0.0",
     "@tanstack/react-query": "^5.90.16",
     "clsx": "^2.1.1",
