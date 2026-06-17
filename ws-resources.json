@@ -1,13 +1,19 @@
 {
-  "routes": {
-    "/*": "/index.html"
-  },
   "headers": {
     "/index.html": {
       "Cache-Control": "no-cache"
     }
   },
+  "routes": {
+    "/*": "/index.html"
+  },
   "metadata": {
-    "name": "SentinelMem — verifiable agent memory"
-  }
+    "link": "https://github.com/EzraNahumury/Sentinel",
+    "image_url": null,
+    "description": "SentinelMem — verifiable AI agent memory on Walrus: TLSNotary-backed, Ed25519-signed case files with cross-session recall and tamper-rejection.",
+    "project_url": "https://github.com/EzraNahumury/Sentinel",
+    "creator": "EzraNahumury"
+  },
+  "site_name": "SentinelMem — verifiable agent memory",
+  "object_id": "0xf416e087b8ea080a6b8e0e2f290e14e6600ef022160c5a3c6904ac38d689cd16"
 }

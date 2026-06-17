@@ -75,8 +75,15 @@ claimed host → rejected. Anyone can re‑check it — even in the browser.
 | `MemoryRegistry` (shared) | `0x4df6d15626ffde080ab1b5bf15728fc107a7007aa7adfba0eb059a57a21927b5` |
 | `Market` (shared) | `0x86db8e0cf8a5cc9f2a1fbbd163ecc0c504b97b291e69ea2867e13e496110c267` |
 | `MemoryAnchored` event | verified — agent‑driven anchor tx `GjknGzPK5S3ctGKebj8Ndw7PWhQgz1XBy8yt519RA1Dr` |
+| **Walrus Site** (inspector UI) | object `0xf416e087b8ea080a6b8e0e2f290e14e6600ef022160c5a3c6904ac38d689cd16` |
+| Walrus Site base36 | `630ffwu54fzvssvdjm350s6ecvon1pmtadwv0aqg0pdj4s1o9i` |
 
-Explore on [Suiscan](https://suiscan.com/testnet/object/0xca26b2e73757ee26fd7e32f1f656bcffa81e5bd42b0fe115ca9ba90ee3297c6e).
+Explore the package on [Suiscan](https://suiscan.com/testnet/object/0xca26b2e73757ee26fd7e32f1f656bcffa81e5bd42b0fe115ca9ba90ee3297c6e).
+The inspector UI is deployed as a **Walrus Site** (HTML/JS/CSS stored on Walrus,
+served by an on‑chain `Site` object). Testnet sites are browsed through a
+[self‑hosted portal](https://docs.wal.app/walrus-sites/portal.html#running-the-portal-locally)
+(wal.app serves mainnet only):
+`http://630ffwu54fzvssvdjm350s6ecvon1pmtadwv0aqg0pdj4s1o9i.localhost:3000`.
 
 ---
 
