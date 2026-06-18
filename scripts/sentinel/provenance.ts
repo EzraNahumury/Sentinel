@@ -96,7 +96,8 @@ export class SentinelProvenance {
     this.aggregator = opts.aggregator ?? DEFAULT_WALRUS_AGGREGATOR;
     this.epochs = opts.epochs ?? 5;
     this.maxRecv = opts.maxRecv ?? 131072;
-    this.proofTimeoutMs = opts.proofTimeoutMs ?? 240000;
+    this.proofTimeoutMs =
+      opts.proofTimeoutMs ?? Number(process.env.SENTINEL_PROOF_TIMEOUT_MS ?? 240000);
     const vantages =
       opts.vantages ??
       (process.env.SENTINEL_VANTAGES ?? "desktop,iphone")
