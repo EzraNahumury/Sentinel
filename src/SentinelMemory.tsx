@@ -235,13 +235,17 @@ function InvestigateBox({ onDone }: { onDone: () => void }) {
       setUrl("");
       onDone();
     } catch (err) {
-      const m = (err as Error).message;
-      const offline = /Failed to fetch|NetworkError|timed out|aborted|ECONNREFUSED/i.test(m);
+      const m = (err as Error).message || String(err);
+      const timedOut =
+        (err as Error).name === "TimeoutError" || /timed out|timeout|abort/i.test(m);
+      const offline = /Failed to fetch|NetworkError|ECONNREFUSED|refused|ENOTFOUND/i.test(m);
       setState({
         status: "error",
-        msg: offline
-          ? "Agent server not reachable — start it with `pnpm sentinel:serve` (OLLAMA_* env set)."
-          : m,
+        msg: timedOut
+          ? "Still investigating on the server — TLS 1.3 sites retry the notary and take longer. Click Reload in a minute to see it (it lands as UNVERIFIED)."
+          : offline
+            ? "Agent server not reachable — start it with `pnpm sentinel:serve` (with OLLAMA_* env set)."
+            : m,
       });
     }
   };
