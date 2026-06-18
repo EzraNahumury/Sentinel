@@ -75,12 +75,16 @@ interface HostMemory {
 async function loadMemory(
   owner: string,
 ): Promise<{ trusted?: string; hosts: HostMemory[] }> {
-  const res = await fetch(INDEX_URL, { cache: "no-store" });
-  if (!res.ok) {
-    // No index yet — empty memory for this wallet (not an error).
+  let index: MemoryIndex;
+  try {
+    const res = await fetch(INDEX_URL, { cache: "no-store" });
+    if (!res.ok) return { trusted: TRUSTED_SIGNER, hosts: [] };
+    // A missing file makes the dev server return index.html (HTML, not JSON);
+    // parse defensively so "no memory yet" isn't shown as a JSON error.
+    index = JSON.parse(await res.text()) as MemoryIndex;
+  } catch {
     return { trusted: TRUSTED_SIGNER, hosts: [] };
   }
-  const index = (await res.json()) as MemoryIndex;
   const trusted = TRUSTED_SIGNER ?? index.signerPublicKey;
   // Only this wallet's investigations.
   const mine = index.owners?.[owner.toLowerCase()] ?? {};
@@ -193,11 +197,9 @@ export function SentinelMemory() {
       ) : (data?.hosts.length ?? 0) === 0 ? (
         <Card>
           <CardContent className="py-6 text-sm text-muted-foreground">
-            No memory yet. Run{" "}
-            <code className="text-foreground">
-              pnpm sentinel https://example.com/
-            </code>{" "}
-            to build a case file.
+            No memory for this wallet yet. Use the{" "}
+            <span className="text-foreground">Investigate</span> box above to
+            analyze a URL — the case file will appear here under your address.
           </CardContent>
         </Card>
       ) : (
