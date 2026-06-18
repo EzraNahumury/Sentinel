@@ -10,6 +10,7 @@
 it's *"here's a re‑checkable proof that host X really served X, in a record no one can forge."*
 
 [![Live demo](https://img.shields.io/badge/demo-sentinelmem.vercel.app-brightgreen?logo=vercel&logoColor=white&labelColor=000)](https://sentinelmem.vercel.app/)
+[![Watch the demo](https://img.shields.io/badge/▶_watch-demo-FF0000?logo=youtube&logoColor=white&labelColor=000)](https://youtu.be/Jv-Ai6FGJMw)
 ![Walrus](https://img.shields.io/badge/Walrus-verifiable%20storage-14b8a6)
 ![Sui](https://img.shields.io/badge/Sui-testnet-4da2ff)
 ![Seal](https://img.shields.io/badge/Seal-encryption-7c5cff)
@@ -19,7 +20,13 @@ it's *"here's a re‑checkable proof that host X really served X, in a record no
 ![React + Vite](https://img.shields.io/badge/React%20%2B%20Vite-inspector-61dafb)
 ![Walrus track](https://img.shields.io/badge/Sui%20Hackathon-Walrus%20track-000)
 
-[**Live demo**](https://sentinelmem.vercel.app/) · [How it works](#how-it-works) · [Architecture](#architecture) · [Live on testnet](#live-on-sui-testnet-verified) · [Quickstart](#quickstart) · [Verifiable memory](#the-verifiable-memory-guarantee) · [Walrus track](#why-it-fits-the-walrus-track) · [Docs](#documentation)
+[**Live demo**](https://sentinelmem.vercel.app/) · [**Watch demo**](https://youtu.be/Jv-Ai6FGJMw) · [How it works](#how-it-works) · [Architecture](#architecture) · [Live on testnet](#live-on-sui-testnet-verified) · [Quickstart](#quickstart) · [Verifiable memory](#the-verifiable-memory-guarantee) · [Walrus track](#why-it-fits-the-walrus-track) · [Docs](#documentation)
+
+<br/>
+
+<a href="https://youtu.be/Jv-Ai6FGJMw"><img src="https://img.youtube.com/vi/Jv-Ai6FGJMw/hqdefault.jpg" alt="Watch the SentinelMem demo" width="480" /></a>
+
+▶ **[Watch the demo on YouTube →](https://youtu.be/Jv-Ai6FGJMw)**
 
 </div>
 
