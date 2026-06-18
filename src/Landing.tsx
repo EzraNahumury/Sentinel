@@ -1,7 +1,9 @@
 // SentinelMem landing hero (Stellar.ai-style layout, content adapted to our
 // project). The four tabs map to the agent loop: Recall → Prove → Analyze →
 // Remember. "Open the inspector" enters the app (App.tsx toggles the view).
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCurrentAccount } from "@mysten/dapp-kit-react";
+import { ConnectButton } from "@mysten/dapp-kit-react/ui";
 import {
   Brain,
   ChevronDown,
@@ -36,6 +38,10 @@ const STACK = ["WALRUS", "SUI", "SEAL", "MemWal", "TLSNotary", "Ollama"];
 
 export function Landing({ onEnter }: { onEnter: () => void }) {
   const [tab, setTab] = useState<TabId>("recall");
+  const account = useCurrentAccount();
+  // Auto-enter the app on a NEW connection. The ref guards the case where the
+  // user is already connected (e.g. came back via "Home") so it doesn't bounce.
+  const wasConnected = useRef(!!account);
 
   useEffect(() => {
     const ids = TABS.map((t) => t.id);
@@ -44,6 +50,11 @@ export function Landing({ onEnter }: { onEnter: () => void }) {
     }, 4000);
     return () => clearInterval(iv);
   }, []);
+
+  useEffect(() => {
+    if (account && !wasConnected.current) onEnter();
+    wasConnected.current = !!account;
+  }, [account, onEnter]);
 
   return (
     <div
@@ -82,12 +93,16 @@ export function Landing({ onEnter }: { onEnter: () => void }) {
           >
             Docs
           </a>
-          <button
-            onClick={onEnter}
-            className="bg-black text-white px-5 py-2.5 rounded-full text-sm font-medium hover:bg-gray-800 transition-colors"
-          >
-            Open inspector
-          </button>
+          {account ? (
+            <button
+              onClick={onEnter}
+              className="bg-black text-white px-5 py-2.5 rounded-full text-sm font-medium hover:bg-gray-800 transition-colors"
+            >
+              Open inspector
+            </button>
+          ) : (
+            <ConnectButton />
+          )}
         </div>
       </nav>
 
@@ -125,13 +140,26 @@ export function Landing({ onEnter }: { onEnter: () => void }) {
           not trusted.
         </p>
 
-        <button
-          onClick={onEnter}
-          className="bg-black text-white px-8 py-3 rounded-full text-base font-medium hover:bg-gray-800 transition-colors mb-12 animate-fade-in-up"
+        <div
+          className="mb-12 flex flex-col items-center gap-2 animate-fade-in-up"
           style={{ opacity: 0, animationDelay: "0.5s" }}
         >
-          Open the inspector
-        </button>
+          {account ? (
+            <button
+              onClick={onEnter}
+              className="bg-black text-white px-8 py-3 rounded-full text-base font-medium hover:bg-gray-800 transition-colors"
+            >
+              Open the inspector
+            </button>
+          ) : (
+            <>
+              <ConnectButton />
+              <span className="text-xs text-gray-400">
+                Connect a wallet — you'll go straight to your memory.
+              </span>
+            </>
+          )}
+        </div>
 
         {/* TAB BAR */}
         <div
