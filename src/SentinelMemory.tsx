@@ -52,7 +52,10 @@ const AGENT_URL =
 interface MemoryIndex {
   schema?: string;
   signerPublicKey?: string;
-  anchors: Record<string, string>;
+  // Per-owner memory: owners[<wallet>][<host>] = manifest blob id.
+  owners?: Record<string, Record<string, string>>;
+  // Legacy shared format (pre per-wallet) — still read as a fallback.
+  anchors?: Record<string, string>;
   updatedAt?: string;
 }
 
@@ -69,17 +72,20 @@ interface HostMemory {
   entries: LoadedEntry[]; // newest first
 }
 
-async function loadMemory(): Promise<{ trusted?: string; hosts: HostMemory[] }> {
+async function loadMemory(
+  owner: string,
+): Promise<{ trusted?: string; hosts: HostMemory[] }> {
   const res = await fetch(INDEX_URL, { cache: "no-store" });
   if (!res.ok) {
-    throw new Error(
-      `No memory index at ${INDEX_URL}. Run the agent first: pnpm sentinel https://example.com/`,
-    );
+    // No index yet — empty memory for this wallet (not an error).
+    return { trusted: TRUSTED_SIGNER, hosts: [] };
   }
   const index = (await res.json()) as MemoryIndex;
   const trusted = TRUSTED_SIGNER ?? index.signerPublicKey;
+  // Only this wallet's investigations.
+  const mine = index.owners?.[owner.toLowerCase()] ?? {};
   const hosts: HostMemory[] = [];
-  for (const [host, manifestBlobId] of Object.entries(index.anchors ?? {})) {
+  for (const [host, manifestBlobId] of Object.entries(mine)) {
     try {
       const manifest = await readManifest(manifestBlobId);
       const entries: LoadedEntry[] = [];
@@ -102,9 +108,12 @@ async function loadMemory(): Promise<{ trusted?: string; hosts: HostMemory[] }> 
 }
 
 export function SentinelMemory() {
+  const account = useCurrentAccount();
+  const owner = account?.address;
   const { data, isPending, error, refetch, isFetching } = useQuery({
-    queryKey: ["sentinel-memory"],
-    queryFn: loadMemory,
+    queryKey: ["sentinel-memory", owner],
+    queryFn: () => loadMemory(owner as string),
+    enabled: !!owner,
     refetchOnWindowFocus: false,
   });
   // Per-entry live re-verification overrides (blobId -> result).
@@ -138,9 +147,9 @@ export function SentinelMemory() {
             <Brain className="h-5 w-5" /> SentinelMem — verifiable agent memory
           </h2>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Per-host case files on Walrus. Each record is Ed25519-signed by the
-            agent and verified in your browser — tampering is detectable here,
-            not just on the server.
+            Your investigations, scoped to the connected wallet. Each record is
+            Ed25519-signed by the agent and verified in your browser — tampering
+            is detectable here, not just on the server.
             {trusted && (
               <>
                 {" "}
@@ -162,10 +171,17 @@ export function SentinelMemory() {
 
       <InvestigateBox onDone={() => refetch()} />
 
-      {isPending ? (
+      {!owner ? (
+        <Card>
+          <CardContent className="py-10 text-center text-sm text-muted-foreground">
+            Connect a wallet (top right) to view and build memory scoped to your
+            address. Each wallet has its own verifiable, append-only memory.
+          </CardContent>
+        </Card>
+      ) : isPending ? (
         <Card>
           <CardContent className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading memory from Walrus…
+            <Loader2 className="h-4 w-4 animate-spin" /> Loading your memory from Walrus…
           </CardContent>
         </Card>
       ) : error ? (
@@ -203,6 +219,7 @@ export function SentinelMemory() {
 }
 
 function InvestigateBox({ onDone }: { onDone: () => void }) {
+  const account = useCurrentAccount();
   const [url, setUrl] = useState("");
   const [state, setState] = useState<
     | { status: "idle" }
@@ -215,12 +232,19 @@ function InvestigateBox({ onDone }: { onDone: () => void }) {
     e.preventDefault();
     const target = url.trim();
     if (!target || state.status === "running") return;
+    if (!account) {
+      setState({
+        status: "error",
+        msg: "Connect a wallet first — memory is recorded under your address.",
+      });
+      return;
+    }
     setState({ status: "running" });
     try {
       const res = await fetch(`${AGENT_URL}/api/investigate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: target }),
+        body: JSON.stringify({ url: target, owner: account.address }),
         signal: AbortSignal.timeout(180000),
       });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -264,7 +288,8 @@ function InvestigateBox({ onDone }: { onDone: () => void }) {
         </div>
         <button
           type="submit"
-          disabled={!url.trim() || state.status === "running"}
+          disabled={!url.trim() || !account || state.status === "running"}
+          title={account ? "Investigate & remember under your wallet" : "Connect a wallet first"}
           className="inline-flex items-center gap-1.5 rounded-md bg-[var(--color-primary)] px-3 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50"
         >
           {state.status === "running" ? (

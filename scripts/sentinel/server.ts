@@ -38,22 +38,30 @@ const prov = new SentinelProvenance({
   epochs: opts.epochs,
 });
 
-async function publishIndex(host: string, manifestBlobId: string): Promise<void> {
-  let existing: { anchors?: Record<string, string> } = {};
+async function publishIndex(
+  owner: string,
+  host: string,
+  manifestBlobId: string,
+): Promise<void> {
+  // Per-owner index: owners[<wallet>][<host>] = manifest. Each wallet sees only
+  // the investigations it ran.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let existing: any = {};
   try {
     existing = JSON.parse(await readFile(PUBLIC_INDEX, "utf8"));
   } catch {
     // first publish
   }
-  const map = { ...(existing.anchors ?? {}), [host]: manifestBlobId };
+  const owners = { ...(existing.owners ?? {}) };
+  owners[owner] = { ...(owners[owner] ?? {}), [host]: manifestBlobId };
   await mkdir(dirname(PUBLIC_INDEX), { recursive: true });
   await writeFile(
     PUBLIC_INDEX,
     JSON.stringify(
       {
-        schema: "sentinelmem.index.v1",
+        schema: "sentinelmem.index.v2",
         signerPublicKey: signer.publicKeyB64,
-        anchors: map,
+        owners,
         updatedAt: new Date().toISOString(),
       },
       null,
@@ -95,8 +103,11 @@ const server = createServer(async (req, res) => {
     let raw = "";
     for await (const chunk of req) raw += chunk;
     let url = "";
+    let owner = "";
     try {
-      url = String(JSON.parse(raw || "{}").url ?? "").trim();
+      const b = JSON.parse(raw || "{}");
+      url = String(b.url ?? "").trim();
+      owner = String(b.owner ?? "").trim();
     } catch {
       // invalid json
     }
@@ -104,11 +115,15 @@ const server = createServer(async (req, res) => {
       send(res, 400, { error: "missing 'url' in request body" });
       return;
     }
+    if (!owner) {
+      send(res, 400, { error: "missing 'owner' — connect a wallet to record memory under it" });
+      return;
+    }
     busy = true;
-    console.log(`=== Investigating ${url} ===`);
+    console.log(`=== Investigating ${url} (owner ${owner.slice(0, 10)}…) ===`);
     try {
-      const r = await investigate(prov, anchors, signer, url, opts);
-      await publishIndex(r.host, r.manifestBlobId);
+      const r = await investigate(prov, anchors, signer, url, opts, undefined, owner);
+      await publishIndex(owner, r.host, r.manifestBlobId);
       console.log(`  ${r.host}: ${r.verdict} (${Math.round(r.confidence * 100)}%) · ${r.tier}`);
       send(res, 200, {
         host: r.host,

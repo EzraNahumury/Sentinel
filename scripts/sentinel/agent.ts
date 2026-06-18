@@ -51,8 +51,12 @@ export async function investigate(
   url: string,
   opts: MemoryWalrusOptions = {},
   onAnchor?: OnAnchor,
+  owner?: string,
 ): Promise<InvestigateResult> {
   const host = hostKey(url);
+  // Namespace the memory chain per owner wallet when provided (per-wallet silo);
+  // otherwise it's the shared, host-keyed memory. entry.host stays the real host.
+  const nsKey = owner ? `${owner.toLowerCase()}::${host}` : host;
 
   // 1. Recall + re-verify. The agent only ever trusts memory it can prove is
   //    (a) authentic and untampered, and (b) provenance-backed for THIS host.
@@ -92,7 +96,7 @@ export async function investigate(
     return { ok: true, reason: "signature + proof re-verified" };
   };
 
-  const recalled = await recallCaseFiles(host, anchors, opts, verifyEntry);
+  const recalled = await recallCaseFiles(nsKey, anchors, opts, verifyEntry);
 
   // 2. Prove the target.
   const ev = await prov.proveUrl(url);
@@ -138,7 +142,12 @@ export async function investigate(
     signerPublicKey: signer.publicKeyB64,
     signature: signer.sign(canonicalCaseFileMessage(entry)),
   };
-  const { entryBlobId, manifestBlobId } = await appendCaseFile(entry, anchors, opts);
+  const { entryBlobId, manifestBlobId } = await appendCaseFile(
+    entry,
+    anchors,
+    opts,
+    nsKey,
+  );
 
   // Optional: anchor the new manifest pointer on-chain (append-only audit).
   let onchainDigest: string | undefined;

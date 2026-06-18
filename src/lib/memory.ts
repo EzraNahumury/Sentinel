@@ -296,11 +296,15 @@ export async function appendCaseFile(
   entry: CaseFileEntry,
   anchors: AnchorStore,
   opts: MemoryWalrusOptions = {},
+  anchorKey?: string,
 ): Promise<{ entryBlobId: string; manifestBlobId: string }> {
   const aggregator = opts.aggregator ?? DEFAULT_WALRUS_AGGREGATOR;
+  // The anchor/chain can be namespaced (e.g. per owner wallet) while the manifest
+  // still records the human host. Defaults to the plain host (shared memory).
+  const key = anchorKey ?? entry.host;
   const entryBlobId = await writeCaseFile(entry, opts);
 
-  const prevManifestBlobId = await anchors.get(entry.host);
+  const prevManifestBlobId = await anchors.get(key);
   let prevEntries: string[] = [];
   if (prevManifestBlobId) {
     try {
@@ -320,7 +324,7 @@ export async function appendCaseFile(
     prevManifestBlobId: prevManifestBlobId ?? null,
   };
   const manifestBlobId = await writeManifest(manifest, opts);
-  await anchors.set(entry.host, manifestBlobId);
+  await anchors.set(key, manifestBlobId);
   return { entryBlobId, manifestBlobId };
 }
 
