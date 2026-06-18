@@ -8,6 +8,17 @@ export const SENTINEL_PKG =
 export const MEMORY_REGISTRY_ID =
   "0x4df6d15626ffde080ab1b5bf15728fc107a7007aa7adfba0eb059a57a21927b5";
 
+// Seal access-control policy — used to decrypt sealed case files in the browser
+// (only addresses on the whitelist can fetch the key).
+export const SEAL_PKG =
+  "0x96adf5e3d28fe56db65e9aaf205017759a2bc41b4c9f1a0a8f44d037f9c9c167";
+export const SEAL_WHITELIST_ID =
+  "0xc43457fae4d6478ef444cdc4155f376f75ee0d4238960f94fc2a269235d7bac1";
+export const SEAL_KEY_SERVERS = [
+  "0x73d05d62c18d9374e3ea529e8e0ed6161da1a141a94d3f76ae3fe4e99356db75", // mysten-testnet-1
+  "0xf5d14a81a982144ae441cd7d64b09027f116a468bd36e7eca494f750591623c8", // mysten-testnet-2
+];
+
 export interface DeployedEntry {
   label: string;
   id: string;

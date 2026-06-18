@@ -244,15 +244,28 @@ export async function readCaseFile(
   cipher?: CaseFileCipher,
 ): Promise<CaseFileEntry> {
   const raw = await fetchJson<CaseFileEntry | SealedEnvelope>(blobId, aggregator);
-  if ((raw as SealedEnvelope).schema === "sentinelmem.sealed.v1") {
+  if (isSealedEnvelope(raw)) {
     if (!cipher) {
       throw new Error(
         "case file is Seal-encrypted — a reader cipher is required to recall it",
       );
     }
-    return cipher.open(raw as SealedEnvelope);
+    return cipher.open(raw);
   }
   return raw as CaseFileEntry;
+}
+
+export function isSealedEnvelope(x: unknown): x is SealedEnvelope {
+  return (x as SealedEnvelope | null)?.schema === "sentinelmem.sealed.v1";
+}
+
+/** Fetch a case-file blob WITHOUT decrypting — returns the plaintext entry or,
+ *  for an encrypted record, the sealed envelope (so the UI can offer to decrypt). */
+export async function readEntryRaw(
+  blobId: string,
+  aggregator: string = DEFAULT_WALRUS_AGGREGATOR,
+): Promise<CaseFileEntry | SealedEnvelope> {
+  return fetchJson<CaseFileEntry | SealedEnvelope>(blobId, aggregator);
 }
 
 async function writeManifest(

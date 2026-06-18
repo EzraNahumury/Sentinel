@@ -14,6 +14,7 @@
     "seal:setup": "tsx scripts/sentinel/seal-setup.ts",
     "seal:demo": "tsx scripts/sentinel/seal-demo.ts",
     "seal:memtest": "tsx scripts/sentinel/seal-memory-test.ts",
+    "seal:seed": "tsx scripts/sentinel/seed-sealed.ts",
     "cloak:serve": "tsx phishing_site/local-server.ts",
     "test": "tsx scripts/sentinel/sentinel.test.ts",
     "deploy:site": "vite build && site-builder deploy --epochs max ./dist",

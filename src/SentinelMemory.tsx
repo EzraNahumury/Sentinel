@@ -26,11 +26,19 @@ import {
 } from "lucide-react";
 import { Card, CardContent } from "./components/ui/card";
 import { walrusAggregatorUrl } from "./lib/walrus";
-import { readManifest, readCaseFile, type CaseFileEntry } from "./lib/memory";
+import {
+  readManifest,
+  readCaseFile,
+  readEntryRaw,
+  isSealedEnvelope,
+  type CaseFileEntry,
+  type SealedEnvelope,
+} from "./lib/memory";
 import {
   verifyCaseFileSignature,
   type MemoryVerifyResult,
 } from "./lib/memory-verify";
+import { decryptSealedInBrowser } from "./lib/seal-browser";
 import { SENTINEL_PKG, MEMORY_REGISTRY_ID, NETWORK } from "./constants";
 
 const INDEX_URL = "/sentinel-memory.json";
@@ -46,8 +54,9 @@ interface MemoryIndex {
 
 interface LoadedEntry {
   blobId: string;
-  entry: CaseFileEntry;
-  verify: MemoryVerifyResult;
+  entry?: CaseFileEntry; // present when plaintext (or after in-browser decrypt)
+  verify?: MemoryVerifyResult;
+  sealed?: SealedEnvelope; // present when Seal-encrypted and not yet decrypted
 }
 
 interface HostMemory {
@@ -71,9 +80,13 @@ async function loadMemory(): Promise<{ trusted?: string; hosts: HostMemory[] }> 
       const manifest = await readManifest(manifestBlobId);
       const entries: LoadedEntry[] = [];
       for (const blobId of manifest.entries) {
-        const entry = await readCaseFile(blobId);
-        const verify = await verifyCaseFileSignature(entry, trusted);
-        entries.push({ blobId, entry, verify });
+        const raw = await readEntryRaw(blobId);
+        if (isSealedEnvelope(raw)) {
+          entries.push({ blobId, sealed: raw });
+        } else {
+          const verify = await verifyCaseFileSignature(raw, trusted);
+          entries.push({ blobId, entry: raw, verify });
+        }
       }
       entries.reverse();
       hosts.push({ host, manifestBlobId, entries });
@@ -173,6 +186,7 @@ export function SentinelMemory() {
               host={h}
               live={live}
               busy={busy}
+              trusted={trusted}
               onReverify={reverify}
             />
           ))}
@@ -186,11 +200,13 @@ function HostBlock({
   host,
   live,
   busy,
+  trusted,
   onReverify,
 }: {
   host: HostMemory;
   live: Record<string, MemoryVerifyResult>;
   busy: string | null;
+  trusted?: string;
   onReverify: (blobId: string) => void;
 }) {
   return (
@@ -218,7 +234,8 @@ function HostBlock({
           <EntryRow
             key={e.blobId}
             loaded={e}
-            verify={live[e.blobId] ?? e.verify}
+            liveVerify={live[e.blobId]}
+            trusted={trusted}
             busy={busy === e.blobId}
             onReverify={() => onReverify(e.blobId)}
           />
@@ -230,22 +247,103 @@ function HostBlock({
 
 function EntryRow({
   loaded,
-  verify,
+  liveVerify,
+  trusted,
   busy,
   onReverify,
 }: {
   loaded: LoadedEntry;
-  verify: MemoryVerifyResult;
+  liveVerify?: MemoryVerifyResult;
+  trusted?: string;
   busy: boolean;
   onReverify: () => void;
 }) {
-  const { entry, blobId } = loaded;
+  const account = useCurrentAccount();
+  const dAppKit = useDAppKit();
+  const [revealed, setRevealed] = useState<{
+    entry: CaseFileEntry;
+    verify: MemoryVerifyResult;
+  } | null>(null);
+  const [dec, setDec] = useState<{ status: "idle" | "decrypting" | "error"; error?: string }>(
+    { status: "idle" },
+  );
+
+  const entry = revealed?.entry ?? loaded.entry;
+  const verify = liveVerify ?? revealed?.verify ?? loaded.verify;
+
+  // Encrypted record not yet decrypted in this browser.
+  if (!entry) {
+    const onDecrypt = async () => {
+      if (!loaded.sealed || !account) return;
+      setDec({ status: "decrypting" });
+      try {
+        const plain = await decryptSealedInBrowser(
+          loaded.sealed,
+          account.address,
+          async (msg) => (await dAppKit.signPersonalMessage({ message: msg })).signature,
+        );
+        const v = await verifyCaseFileSignature(plain, trusted);
+        setRevealed({ entry: plain, verify: v });
+        setDec({ status: "idle" });
+      } catch (e) {
+        setDec({ status: "error", error: (e as Error).message });
+      }
+    };
+    return (
+      <div className="px-4 py-3 text-xs">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1 rounded bg-violet-500/15 px-1.5 py-0.5 font-medium text-violet-400">
+            <Lock className="h-3 w-3" /> Seal-encrypted
+          </span>
+          <span className="text-muted-foreground">
+            content hidden — only whitelisted addresses can decrypt
+          </span>
+          <a
+            href={walrusAggregatorUrl(loaded.blobId)}
+            target="_blank"
+            rel="noreferrer"
+            className="ml-auto text-muted-foreground hover:underline"
+          >
+            sealed blob
+          </a>
+          <button
+            onClick={onDecrypt}
+            disabled={!account || dec.status === "decrypting"}
+            title={account ? "Decrypt with your connected wallet" : "Connect a wallet first"}
+            className="inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] text-muted-foreground transition hover:bg-muted/40 disabled:opacity-50"
+          >
+            {dec.status === "decrypting" ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Lock className="h-3 w-3" />
+            )}
+            {dec.status === "decrypting" ? "Decrypting…" : "Decrypt with wallet"}
+          </button>
+        </div>
+        {dec.status === "error" && (
+          <div className="mt-1 text-[11px] text-amber-600">
+            {/NoAccess|does not have access/i.test(dec.error ?? "")
+              ? "Access denied — your address is not on the Seal whitelist."
+              : dec.error}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const blobId = loaded.blobId;
+  const v: MemoryVerifyResult = verify ?? { status: "unsupported", reason: "unverified" };
   return (
     <div className="px-4 py-3 text-xs">
       <div className="flex flex-wrap items-center gap-2">
+        {loaded.sealed && (
+          <span className="inline-flex items-center gap-1 rounded bg-violet-500/15 px-1.5 py-0.5 font-medium text-violet-400">
+            <Lock className="h-3 w-3" /> decrypted
+          </span>
+        )}
         <VerdictChip verdict={entry.verdict} />
         <TierBadge tier={entry.tier} />
-        <MemoryBadge verify={verify} />
+        <MemoryBadge verify={v} />
         <span className="text-muted-foreground">
           {Math.round(entry.confidence * 100)}% conf
         </span>
@@ -301,17 +399,19 @@ function EntryRow({
         >
           record
         </a>
-        <button
-          onClick={onReverify}
-          disabled={busy}
-          className="ml-auto inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] text-muted-foreground transition hover:bg-muted/40"
-        >
-          <RefreshCw className={`h-3 w-3 ${busy ? "animate-spin" : ""}`} />
-          Re-verify
-        </button>
+        {!loaded.sealed && (
+          <button
+            onClick={onReverify}
+            disabled={busy}
+            className="ml-auto inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] text-muted-foreground transition hover:bg-muted/40"
+          >
+            <RefreshCw className={`h-3 w-3 ${busy ? "animate-spin" : ""}`} />
+            Re-verify
+          </button>
+        )}
       </div>
-      {verify.status !== "verified" && (
-        <div className="mt-1 text-[11px] text-amber-600">{verify.reason}</div>
+      {v.status !== "verified" && (
+        <div className="mt-1 text-[11px] text-amber-600">{v.reason}</div>
       )}
     </div>
   );
