@@ -123,6 +123,9 @@ export function SentinelMemory() {
   // Per-entry live re-verification overrides (blobId -> result).
   const [live, setLive] = useState<Record<string, MemoryVerifyResult>>({});
   const [busy, setBusy] = useState<string | null>(null);
+  // blobId that was just re-verified — shows a brief "re-checked" confirmation
+  // so a click is visibly acknowledged even when the result is unchanged.
+  const [flash, setFlash] = useState<string | null>(null);
 
   const trusted = data?.trusted;
 
@@ -140,6 +143,11 @@ export function SentinelMemory() {
       }));
     } finally {
       setBusy(null);
+      setFlash(blobId);
+      window.setTimeout(
+        () => setFlash((f) => (f === blobId ? null : f)),
+        1800,
+      );
     }
   };
 
@@ -210,6 +218,7 @@ export function SentinelMemory() {
               host={h}
               live={live}
               busy={busy}
+              flash={flash}
               trusted={trusted}
               onReverify={reverify}
             />
@@ -321,12 +330,14 @@ function HostBlock({
   host,
   live,
   busy,
+  flash,
   trusted,
   onReverify,
 }: {
   host: HostMemory;
   live: Record<string, MemoryVerifyResult>;
   busy: string | null;
+  flash: string | null;
   trusted?: string;
   onReverify: (blobId: string) => void;
 }) {
@@ -358,6 +369,7 @@ function HostBlock({
             liveVerify={live[e.blobId]}
             trusted={trusted}
             busy={busy === e.blobId}
+            justChecked={flash === e.blobId}
             onReverify={() => onReverify(e.blobId)}
           />
         ))}
@@ -371,12 +383,14 @@ function EntryRow({
   liveVerify,
   trusted,
   busy,
+  justChecked,
   onReverify,
 }: {
   loaded: LoadedEntry;
   liveVerify?: MemoryVerifyResult;
   trusted?: string;
   busy: boolean;
+  justChecked: boolean;
   onReverify: () => void;
 }) {
   const account = useCurrentAccount();
@@ -521,14 +535,21 @@ function EntryRow({
           record
         </a>
         {!loaded.sealed && (
-          <button
-            onClick={onReverify}
-            disabled={busy}
-            className="ml-auto inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] text-muted-foreground transition hover:bg-muted/40"
-          >
-            <RefreshCw className={`h-3 w-3 ${busy ? "animate-spin" : ""}`} />
-            Re-verify
-          </button>
+          <span className="ml-auto inline-flex items-center gap-2">
+            {justChecked && !busy && (
+              <span className="inline-flex items-center gap-1 text-[11px] text-emerald-500">
+                <Check className="h-3 w-3" /> re-checked
+              </span>
+            )}
+            <button
+              onClick={onReverify}
+              disabled={busy}
+              className="inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] text-muted-foreground transition hover:bg-muted/40 disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3 w-3 ${busy ? "animate-spin" : ""}`} />
+              {busy ? "Checking…" : "Re-verify"}
+            </button>
+          </span>
         )}
       </div>
       {v.status !== "verified" && (
