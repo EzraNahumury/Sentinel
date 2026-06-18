@@ -1,23 +1,42 @@
-import { Github } from "lucide-react";
+import { useState } from "react";
+import { Github, ArrowLeft } from "lucide-react";
 import { ConnectButton } from "@mysten/dapp-kit-react/ui";
 import { SentinelMemory } from "./SentinelMemory";
 import { DeploymentInfo } from "./DeploymentInfo";
+import { Landing } from "./Landing";
 
 const REPO_URL = "https://github.com/EzraNahumury/Sentinel";
 
 function App() {
+  const [view, setView] = useState<"landing" | "app">("landing");
+
+  if (view === "landing") {
+    return <Landing onEnter={() => setView("app")} />;
+  }
+
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-50 bg-[var(--color-nav)] text-white">
         <div className="container mx-auto flex h-14 items-center justify-between px-4">
-          <h1 className="flex items-center gap-2 text-lg font-semibold">
+          <button
+            onClick={() => setView("landing")}
+            title="Back to home"
+            className="flex items-center gap-2 text-lg font-semibold transition hover:opacity-80"
+          >
             <img src="/logo.png" alt="SentinelMem logo" className="h-7 w-7" />
             SentinelMem
             <span className="hidden text-xs font-normal text-white/50 sm:inline">
               · verifiable agent memory on Walrus
             </span>
-          </h1>
+          </button>
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setView("landing")}
+              className="inline-flex items-center gap-1.5 text-sm text-white/70 transition hover:text-white"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span className="hidden sm:inline">Home</span>
+            </button>
             <a
               href={REPO_URL}
               target="_blank"
