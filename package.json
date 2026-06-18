@@ -8,6 +8,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "sentinel": "tsx scripts/sentinel/cli.ts",
+    "sentinel:serve": "tsx scripts/sentinel/server.ts",
     "sentinel:tamper": "tsx scripts/sentinel/tamper.ts",
     "sentinel:audit": "tsx scripts/sentinel/audit-cli.ts",
     "memwal:test": "tsx scripts/sentinel/memwal-test.ts",

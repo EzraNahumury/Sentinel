@@ -6,7 +6,7 @@
 // browser (crypto.subtle), so anyone can independently confirm the memory has
 // not been tampered.
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useCurrentAccount, useDAppKit } from "@mysten/dapp-kit-react";
 import { Transaction } from "@mysten/sui/transactions";
@@ -23,6 +23,7 @@ import {
   Anchor,
   ExternalLink,
   Check,
+  Search,
 } from "lucide-react";
 import { Card, CardContent } from "./components/ui/card";
 import { walrusAggregatorUrl } from "./lib/walrus";
@@ -44,6 +45,9 @@ import { SENTINEL_PKG, MEMORY_REGISTRY_ID, NETWORK } from "./constants";
 const INDEX_URL = "/sentinel-memory.json";
 const TRUSTED_SIGNER =
   (import.meta.env.VITE_SENTINEL_SIGNER as string | undefined) || undefined;
+// Local agent server (pnpm sentinel:serve) that runs real investigations.
+const AGENT_URL =
+  (import.meta.env.VITE_AGENT_URL as string | undefined) || "http://localhost:8787";
 
 interface MemoryIndex {
   schema?: string;
@@ -156,6 +160,8 @@ export function SentinelMemory() {
         </button>
       </div>
 
+      <InvestigateBox onDone={() => refetch()} />
+
       {isPending ? (
         <Card>
           <CardContent className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
@@ -193,6 +199,90 @@ export function SentinelMemory() {
         </div>
       )}
     </div>
+  );
+}
+
+function InvestigateBox({ onDone }: { onDone: () => void }) {
+  const [url, setUrl] = useState("");
+  const [state, setState] = useState<
+    | { status: "idle" }
+    | { status: "running" }
+    | { status: "done"; msg: string }
+    | { status: "error"; msg: string }
+  >({ status: "idle" });
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    const target = url.trim();
+    if (!target || state.status === "running") return;
+    setState({ status: "running" });
+    try {
+      const res = await fetch(`${AGENT_URL}/api/investigate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: target }),
+        signal: AbortSignal.timeout(180000),
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data: any = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `agent error ${res.status}`);
+      setState({
+        status: "done",
+        msg: `${data.host}: ${String(data.verdict).toUpperCase()} (${Math.round(
+          (data.confidence ?? 0) * 100,
+        )}%) · ${data.tier}`,
+      });
+      setUrl("");
+      onDone();
+    } catch (err) {
+      const m = (err as Error).message;
+      const offline = /Failed to fetch|NetworkError|timed out|aborted|ECONNREFUSED/i.test(m);
+      setState({
+        status: "error",
+        msg: offline
+          ? "Agent server not reachable — start it with `pnpm sentinel:serve` (OLLAMA_* env set)."
+          : m,
+      });
+    }
+  };
+
+  return (
+    <form onSubmit={submit} className="mb-4">
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://suspicious-site.example/ — investigate & remember"
+            className="w-full rounded-md border bg-[var(--color-card)] py-2 pl-8 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:border-[var(--color-ring)]"
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={!url.trim() || state.status === "running"}
+          className="inline-flex items-center gap-1.5 rounded-md bg-[var(--color-primary)] px-3 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50"
+        >
+          {state.status === "running" ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Search className="h-3.5 w-3.5" />
+          )}
+          Investigate
+        </button>
+      </div>
+      {state.status === "running" && (
+        <p className="mt-1.5 text-xs text-muted-foreground">
+          Running the agent — TLSNotary proof + headless capture + LLM analysis. This can take 30–90s…
+        </p>
+      )}
+      {state.status === "done" && (
+        <p className="mt-1.5 text-xs text-emerald-500">Added {state.msg}</p>
+      )}
+      {state.status === "error" && (
+        <p className="mt-1.5 text-xs text-amber-600">{state.msg}</p>
+      )}
+    </form>
   );
 }
 
