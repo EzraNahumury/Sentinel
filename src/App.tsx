@@ -1,4 +1,5 @@
 import { Github } from "lucide-react";
+import { ConnectButton } from "@mysten/dapp-kit-react/ui";
 import { SentinelMemory } from "./SentinelMemory";
 import { DeploymentInfo } from "./DeploymentInfo";
 
@@ -16,15 +17,18 @@ function App() {
               · verifiable agent memory on Walrus
             </span>
           </h1>
-          <a
-            href={REPO_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 text-sm text-white/70 transition hover:text-white"
-          >
-            <Github className="h-4 w-4" />
-            <span className="hidden sm:inline">GitHub</span>
-          </a>
+          <div className="flex items-center gap-3">
+            <a
+              href={REPO_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 text-sm text-white/70 transition hover:text-white"
+            >
+              <Github className="h-4 w-4" />
+              <span className="hidden sm:inline">GitHub</span>
+            </a>
+            <ConnectButton />
+          </div>
         </div>
       </header>
 

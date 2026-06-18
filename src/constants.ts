@@ -1,6 +1,13 @@
 // SentinelMem live testnet deployments (see README "Live on Sui testnet").
 export const NETWORK = "testnet";
 
+// On-chain memory anchor (sentinel_memory module) — used by the "Anchor on-chain"
+// wallet action to write host -> manifest pointers to Sui.
+export const SENTINEL_PKG =
+  "0xca26b2e73757ee26fd7e32f1f656bcffa81e5bd42b0fe115ca9ba90ee3297c6e";
+export const MEMORY_REGISTRY_ID =
+  "0x4df6d15626ffde080ab1b5bf15728fc107a7007aa7adfba0eb059a57a21927b5";
+
 export interface DeployedEntry {
   label: string;
   id: string;

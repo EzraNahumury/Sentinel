@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@mysten-incubation/memwal": "^0.0.7",
+    "@mysten/dapp-kit-react": "^2.0.3",
     "@mysten/seal": "^1.2.0",
     "@mysten/sui": "^2.16.2",
     "@mysten/walrus": "^1.2.0",

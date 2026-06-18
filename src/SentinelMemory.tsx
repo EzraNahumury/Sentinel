@@ -8,6 +8,8 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useCurrentAccount, useDAppKit } from "@mysten/dapp-kit-react";
+import { Transaction } from "@mysten/sui/transactions";
 import {
   Loader2,
   ShieldCheck,
@@ -18,6 +20,9 @@ import {
   RefreshCw,
   FileCheck2,
   AlertTriangle,
+  Anchor,
+  ExternalLink,
+  Check,
 } from "lucide-react";
 import { Card, CardContent } from "./components/ui/card";
 import { walrusAggregatorUrl } from "./lib/walrus";
@@ -26,6 +31,7 @@ import {
   verifyCaseFileSignature,
   type MemoryVerifyResult,
 } from "./lib/memory-verify";
+import { SENTINEL_PKG, MEMORY_REGISTRY_ID, NETWORK } from "./constants";
 
 const INDEX_URL = "/sentinel-memory.json";
 const TRUSTED_SIGNER =
@@ -189,7 +195,7 @@ function HostBlock({
 }) {
   return (
     <Card className="overflow-hidden">
-      <div className="flex items-center justify-between border-b px-4 py-3">
+      <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
         <div className="min-w-0">
           <div className="truncate text-sm font-medium">{host.host}</div>
           <div className="text-xs text-muted-foreground">
@@ -205,6 +211,7 @@ function HostBlock({
             </a>
           </div>
         </div>
+        <AnchorOnChain host={host.host} manifestBlobId={host.manifestBlobId} />
       </div>
       <div className="divide-y">
         {host.entries.map((e) => (
@@ -305,6 +312,93 @@ function EntryRow({
       </div>
       {verify.status !== "verified" && (
         <div className="mt-1 text-[11px] text-amber-600">{verify.reason}</div>
+      )}
+    </div>
+  );
+}
+
+function AnchorOnChain({
+  host,
+  manifestBlobId,
+}: {
+  host: string;
+  manifestBlobId: string;
+}) {
+  const account = useCurrentAccount();
+  const dAppKit = useDAppKit();
+  const [state, setState] = useState<
+    | { status: "idle" }
+    | { status: "signing" }
+    | { status: "done"; digest: string }
+    | { status: "error"; error: string }
+  >({ status: "idle" });
+
+  const anchor = async () => {
+    setState({ status: "signing" });
+    try {
+      const tx = new Transaction();
+      tx.moveCall({
+        target: `${SENTINEL_PKG}::sentinel_memory::anchor_memory`,
+        arguments: [
+          tx.object(MEMORY_REGISTRY_ID),
+          tx.pure.string(host),
+          tx.pure.string(manifestBlobId),
+        ],
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const res: any = await dAppKit.signAndExecuteTransaction({ transaction: tx });
+      if (res?.$kind === "FailedTransaction") {
+        throw new Error("transaction failed on-chain");
+      }
+      const digest: string | undefined = res?.Transaction?.digest ?? res?.digest;
+      if (!digest) throw new Error("no transaction digest returned");
+      setState({ status: "done", digest });
+    } catch (e) {
+      setState({ status: "error", error: (e as Error).message });
+    }
+  };
+
+  if (state.status === "done") {
+    return (
+      <a
+        href={`https://suiscan.com/${NETWORK}/tx/${state.digest}`}
+        target="_blank"
+        rel="noreferrer"
+        title={state.digest}
+        className="inline-flex shrink-0 items-center gap-1 rounded border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-[11px] font-medium text-emerald-500 hover:bg-emerald-500/20"
+      >
+        <Check className="h-3 w-3" /> anchored on-chain
+        <ExternalLink className="h-3 w-3" />
+      </a>
+    );
+  }
+
+  return (
+    <div className="flex shrink-0 flex-col items-end gap-0.5">
+      <button
+        onClick={anchor}
+        disabled={!account || state.status === "signing"}
+        title={
+          account
+            ? "Write this host's memory pointer to Sui (MemoryAnchored event)"
+            : "Connect a wallet first"
+        }
+        className="inline-flex items-center gap-1 rounded border px-2 py-1 text-[11px] text-muted-foreground transition hover:bg-muted/40 disabled:opacity-50"
+      >
+        {state.status === "signing" ? (
+          <Loader2 className="h-3 w-3 animate-spin" />
+        ) : (
+          <Anchor className="h-3 w-3" />
+        )}
+        {state.status === "signing" ? "Anchoring…" : "Anchor on-chain"}
+      </button>
+      {state.status === "error" && (
+        <span
+          className="max-w-[200px] truncate text-[10px] text-amber-600"
+          title={state.error}
+        >
+          {state.error}
+        </span>
       )}
     </div>
   );
