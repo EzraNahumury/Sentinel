@@ -9,6 +9,7 @@
 **re‑verifiable in your browser**. A recalled fact isn't *"the LLM says it saw X"* —
 it's *"here's a re‑checkable proof that host X really served X, in a record no one can forge."*
 
+[![Live demo](https://img.shields.io/badge/demo-sentinelmem.vercel.app-brightgreen?logo=vercel&logoColor=white&labelColor=000)](https://sentinelmem.vercel.app/)
 ![Walrus](https://img.shields.io/badge/Walrus-verifiable%20storage-14b8a6)
 ![Sui](https://img.shields.io/badge/Sui-testnet-4da2ff)
 ![Seal](https://img.shields.io/badge/Seal-encryption-7c5cff)
@@ -18,7 +19,7 @@ it's *"here's a re‑checkable proof that host X really served X, in a record no
 ![React + Vite](https://img.shields.io/badge/React%20%2B%20Vite-inspector-61dafb)
 ![Walrus track](https://img.shields.io/badge/Sui%20Hackathon-Walrus%20track-000)
 
-[How it works](#how-it-works) · [Architecture](#architecture) · [Live on testnet](#live-on-sui-testnet-verified) · [Quickstart](#quickstart) · [Verifiable memory](#the-verifiable-memory-guarantee) · [Walrus track](#why-it-fits-the-walrus-track) · [Docs](#documentation)
+[**Live demo**](https://sentinelmem.vercel.app/) · [How it works](#how-it-works) · [Architecture](#architecture) · [Live on testnet](#live-on-sui-testnet-verified) · [Quickstart](#quickstart) · [Verifiable memory](#the-verifiable-memory-guarantee) · [Walrus track](#why-it-fits-the-walrus-track) · [Docs](#documentation)
 
 </div>
 
@@ -326,10 +327,11 @@ Ed25519 verification · Playwright capture · `@mysten/dapp-kit` wallet.
 
 ## Deploy
 
-- **Frontend → Vercel.** `vercel.json` pins the Vite build; **no env required**
-  (never put agent secrets in the client). The deployed site is the landing +
-  inspector + wallet/anchor/decrypt; the in‑app *Investigate* needs the agent
-  server (`pnpm sentinel:serve`, local or self‑hosted via `VITE_AGENT_URL`).
+- **Frontend → Vercel** — live at **[sentinelmem.vercel.app](https://sentinelmem.vercel.app/)**.
+  `vercel.json` pins the Vite build; **no env required** (never put agent secrets
+  in the client). The deployed site is the landing + inspector + wallet/anchor/decrypt;
+  the in‑app *Investigate* needs the agent server (`pnpm sentinel:serve`, local or
+  self‑hosted via `VITE_AGENT_URL`).
 - **Inspector → Walrus Sites.** `pnpm deploy:site` (site‑builder).
 
 ## Honest limitations
